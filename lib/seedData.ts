@@ -20,7 +20,7 @@ function budgetItem(
   category: string, description: string, day: WeddingDay,
   totalAmount: number, paidBy: Payer, status: PayStatus, notes?: string,
 ): BudgetItem {
-  return { id: uid(), category, description, day, totalAmount, paidBy, status, notes };
+  return { id: uid(), category, description, day, totalAmount, paidBy, status, notes, payments: [] };
 }
 
 function villaRoom(

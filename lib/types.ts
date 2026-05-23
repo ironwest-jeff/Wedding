@@ -2,6 +2,15 @@ export type WeddingDay = 'Aug 31 — Welcome Dinner' | 'Sep 1 — Wedding Day' |
 export type Payer = 'Nat/Jeff' | 'Mike' | 'Tony' | 'Shared' | 'Vendor';
 export type PayStatus = 'Paid' | 'Pending' | 'Deposit Paid';
 
+export interface Payment {
+  id: string;
+  amount: number;
+  paidBy: string;   // "Jeff" | "Nat" | "Mike" | "Tony" | etc.
+  date: string;
+  note: string;
+  isCash: boolean;
+}
+
 export interface BudgetItem {
   id: string;
   category: string;
@@ -13,6 +22,8 @@ export interface BudgetItem {
   status: PayStatus;
   notes?: string;
   dueDate?: string;
+  payments: Payment[];   // payment history (deposits, partials, cash, etc.)
+  taxRate?: number;      // optional tax %, e.g. 22 for Italy IVA
 }
 
 export type DietaryRestriction = 'None' | 'Vegetarian' | 'Vegan' | 'Gluten-Free' | 'Kosher' | 'Halal' | 'Nut Allergy' | 'Dairy-Free' | 'Other';
