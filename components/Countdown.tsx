@@ -1,80 +1,112 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-interface DayCountdown {
-  label: string;
-  date: Date;
-  emoji: string;
-}
-
-const events: DayCountdown[] = [
-  { label: 'Welcome Dinner', date: new Date('2025-08-31T17:00:00'), emoji: '🥂' },
-  { label: 'Wedding Day', date: new Date('2025-09-01T14:00:00'), emoji: '💍' },
-  { label: 'Pool Party', date: new Date('2025-09-02T12:00:00'), emoji: '🌊' },
-  { label: 'Checkout', date: new Date('2025-09-03T11:00:00'), emoji: '✈️' },
+const EVENTS = [
+  {
+    label: 'Toronto',
+    subtitle: 'Jul 11, 2025',
+    date: new Date('2025-07-11T18:00:00'),
+    emoji: '🍁',
+    doneLabel: 'Toronto ✓',
+  },
+  {
+    label: 'Italy',
+    subtitle: 'Aug 31, 2025',
+    date: new Date('2025-08-31T17:00:00'),
+    emoji: '🇮🇹',
+    doneLabel: 'Italy ✓',
+  },
 ];
 
 function getTimeLeft(target: Date) {
   const diff = target.getTime() - Date.now();
   if (diff <= 0) return null;
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const secs = Math.floor((diff % (1000 * 60)) / 1000);
-  return { days, hours, mins, secs };
+  return {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+    mins: Math.floor((diff % 3600000) / 60000),
+    secs: Math.floor((diff % 60000) / 1000),
+  };
 }
 
 export default function Countdown() {
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     const t = setInterval(() => setTick(x => x + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const nextEvent = events.find(e => e.date.getTime() > Date.now());
-  if (!nextEvent) {
-    return (
-      <div style={{ textAlign: 'right' }}>
-        <p className="font-display" style={{ color: 'var(--champagne)', fontSize: '1.4rem', fontStyle: 'italic' }}>
-          Congratulations! 🎉
-        </p>
-      </div>
-    );
-  }
-
-  const tl = getTimeLeft(nextEvent.date);
-  if (!tl) return null;
-
   return (
-    <div style={{
-      textAlign: 'right',
-      background: 'rgba(0,0,0,0.32)',
-      backdropFilter: 'blur(6px)',
-      borderRadius: 12,
-      padding: '0.65rem 1rem',
-      border: '1px solid rgba(255,255,255,0.12)',
-    }}>
-      <p className="font-sans-clean" style={{ color: 'var(--champagne)', fontSize: '0.58rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-        {nextEvent.emoji} {nextEvent.label}
-      </p>
-      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-        {[
-          { val: tl.days, unit: 'Days' },
-          { val: tl.hours, unit: 'Hrs' },
-          { val: tl.mins, unit: 'Min' },
-          { val: tl.secs, unit: 'Sec' },
-        ].map(({ val, unit }) => (
-          <div key={unit} style={{ textAlign: 'center' }}>
-            <div className="font-display" style={{ fontSize: '1.8rem', fontWeight: 300, color: 'white', lineHeight: 1 }}>
-              {String(val).padStart(2, '0')}
-            </div>
-            <div className="font-sans-clean" style={{ fontSize: '0.52rem', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-              {unit}
-            </div>
+    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      {EVENTS.map(ev => {
+        const tl = getTimeLeft(ev.date);
+        return (
+          <div
+            key={ev.label}
+            style={{
+              background: 'rgba(0,0,0,0.35)',
+              backdropFilter: 'blur(8px)',
+              borderRadius: 12,
+              padding: '0.6rem 0.9rem',
+              border: '1px solid rgba(255,255,255,0.13)',
+              textAlign: 'center',
+              minWidth: 130,
+            }}
+          >
+            <p className="font-sans-clean" style={{
+              color: 'var(--champagne)',
+              fontSize: '0.56rem',
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              marginBottom: '0.15rem',
+            }}>
+              {ev.emoji} {ev.label}
+            </p>
+            <p className="font-sans-clean" style={{
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: '0.5rem',
+              letterSpacing: '0.1em',
+              marginBottom: '0.4rem',
+            }}>
+              {ev.subtitle}
+            </p>
+
+            {tl ? (
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                {[
+                  { val: tl.days, unit: 'D' },
+                  { val: tl.hours, unit: 'H' },
+                  { val: tl.mins, unit: 'M' },
+                  { val: tl.secs, unit: 'S' },
+                ].map(({ val, unit }) => (
+                  <div key={unit} style={{ textAlign: 'center' }}>
+                    <div className="font-display" style={{
+                      fontSize: '1.55rem', fontWeight: 300,
+                      color: 'white', lineHeight: 1,
+                    }}>
+                      {String(val).padStart(2, '0')}
+                    </div>
+                    <div className="font-sans-clean" style={{
+                      fontSize: '0.46rem', color: 'rgba(255,255,255,0.55)',
+                      letterSpacing: '0.12em', textTransform: 'uppercase',
+                    }}>
+                      {unit}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="font-display" style={{
+                color: 'var(--champagne)', fontSize: '1rem',
+                fontStyle: 'italic', marginTop: '0.25rem',
+              }}>
+                {ev.doneLabel} 🎉
+              </p>
+            )}
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
