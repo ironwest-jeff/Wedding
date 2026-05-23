@@ -5,9 +5,10 @@ import GuestListTab from '@/components/GuestListTab';
 import ChecklistTab from '@/components/ChecklistTab';
 import TorontoTab from '@/components/TorontoTab';
 import VillaTab from '@/components/VillaTab';
+import SeatingTab from '@/components/SeatingTab';
 import Countdown from '@/components/Countdown';
 
-type Tab = 'budget' | 'guests' | 'checklist' | 'toronto' | 'villa';
+type Tab = 'budget' | 'guests' | 'checklist' | 'toronto' | 'villa' | 'seating';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('budget');
@@ -17,6 +18,7 @@ export default function Home() {
     { id: 'guests', label: 'Guest List', icon: '🥂' },
     { id: 'checklist', label: 'Checklist', icon: '✓' },
     { id: 'villa', label: 'Villa Rooms', icon: '🏡' },
+    { id: 'seating', label: 'Seating', icon: '🪑' },
     { id: 'toronto', label: 'Toronto Wedding', icon: '⛪' },
   ];
 
@@ -91,6 +93,7 @@ export default function Home() {
           {activeTab === 'guests' && <GuestListTab />}
           {activeTab === 'checklist' && <ChecklistTab />}
           {activeTab === 'villa' && <VillaTab />}
+          {activeTab === 'seating' && <SeatingTab />}
           {activeTab === 'toronto' && <TorontoTab />}
         </div>
       </main>

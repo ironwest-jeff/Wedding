@@ -32,7 +32,7 @@ const STATUS_STYLE: Record<PayStatus, { bg: string; color: string }> = {
 };
 
 function fmt(n: number) {
-  return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
 }
 
 function genId() { return Math.random().toString(36).slice(2, 10); }
@@ -254,7 +254,7 @@ export default function BudgetTab() {
                 </select>
               </div>
               <div>
-                <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Amount (CAD) *</label>
+                <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Amount (EUR) *</label>
                 <input style={inputStyle} type="number" value={form.totalAmount || ''} onChange={e => setForm(f => ({ ...f, totalAmount: parseFloat(e.target.value) || 0 }))} placeholder="0" />
               </div>
               <div>
