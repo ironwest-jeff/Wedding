@@ -9,6 +9,7 @@ import VillaTab from '@/components/VillaTab';
 import SeatingTab from '@/components/SeatingTab';
 import Countdown from '@/components/Countdown';
 import { supabase } from '@/lib/supabase';
+import MusicPlayer from '@/components/MusicPlayer';
 
 type Tab = 'budget' | 'guests' | 'checklist' | 'toronto' | 'villa' | 'seating';
 
@@ -79,6 +80,10 @@ export default function Home() {
         {/* Countdown — top right */}
         <div style={{ position: 'absolute', top: '1.25rem', right: '2rem', zIndex: 2 }}>
           <Countdown />
+        </div>
+        {/* Music player — bottom left of hero */}
+        <div style={{ position: 'absolute', bottom: '1.25rem', left: '2rem', zIndex: 2 }}>
+          <MusicPlayer />
         </div>
         {/* Sign out — top left */}
         <div style={{ position: 'absolute', top: '1.25rem', left: '2rem', zIndex: 2 }}>
