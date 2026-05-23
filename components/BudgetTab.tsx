@@ -51,6 +51,8 @@ export default function BudgetTab() {
   const [filterPayer, setFilterPayer] = useState<Payer | 'All'>('All');
   const [filterStatus, setFilterStatus] = useState<PayStatus | 'All'>('All');
   const [sortBy, setSortBy] = useState<'amount' | 'category' | 'day'>('category');
+  const [hideAmounts, setHideAmounts] = useState(false);
+  const mask = (n: number) => hideAmounts ? '••••••' : fmt(n);
 
   useEffect(() => {
     const local = getBudgetItems();
@@ -139,11 +141,27 @@ export default function BudgetTab() {
   return (
     <div>
       {/* Summary Cards */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+        <button
+          onClick={() => setHideAmounts(h => !h)}
+          className="font-sans-clean"
+          title={hideAmounts ? 'Show amounts' : 'Hide amounts'}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '0.35rem',
+            background: 'none', border: '1px solid var(--light-gray)',
+            borderRadius: '6px', padding: '0.3rem 0.65rem',
+            cursor: 'pointer', fontSize: '0.65rem', letterSpacing: '0.1em',
+            textTransform: 'uppercase', color: 'var(--mid-gray)',
+          }}
+        >
+          {hideAmounts ? '👁 Show' : '🙈 Hide'}
+        </button>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total Budget', value: fmt(totalBudget), accent: 'var(--charcoal)' },
-          { label: 'Paid', value: fmt(totalPaid), accent: 'var(--deep-sage)' },
-          { label: 'Remaining', value: fmt(totalPending), accent: 'var(--dusty-rose)' },
+          { label: 'Total Budget', value: mask(totalBudget), accent: 'var(--charcoal)' },
+          { label: 'Paid', value: mask(totalPaid), accent: 'var(--deep-sage)' },
+          { label: 'Remaining', value: mask(totalPending), accent: 'var(--dusty-rose)' },
           { label: 'Items', value: items.length.toString(), accent: 'var(--champagne)' },
         ].map(s => (
           <div key={s.label} style={{ ...card, padding: '1.25rem' }}>
@@ -166,9 +184,9 @@ export default function BudgetTab() {
                     <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color: PAYER_COLORS[p.payer as Payer] }}>{p.payer}</span>
                     <span className="font-sans-clean" style={{ fontSize: '0.65rem', color: 'var(--mid-gray)' }}>{pct.toFixed(0)}%</span>
                   </div>
-                  <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.25rem' }}>{fmt(p.total)}</div>
+                  <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.25rem' }}>{mask(p.total)}</div>
                   <div className="font-sans-clean" style={{ fontSize: '0.7rem', color: 'var(--mid-gray)' }}>
-                    {fmt(p.paid)} paid · {fmt(p.total - p.paid)} remaining
+                    {mask(p.paid)} paid · {mask(p.total - p.paid)} remaining
                   </div>
                   <div style={{ marginTop: '0.6rem', height: '4px', background: 'var(--light-gray)', borderRadius: '2px', overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: PAYER_COLORS[p.payer as Payer], borderRadius: '2px', transition: 'width 0.5s' }} />
@@ -192,7 +210,7 @@ export default function BudgetTab() {
                 borderLeft: `3px solid ${DAY_COLORS[d.day]}`
               }}>
                 <span className="font-sans-clean" style={{ fontSize: '0.75rem', color: DAY_COLORS[d.day], fontWeight: 500 }}>{d.day}</span>
-                <span className="font-display" style={{ fontSize: '1rem' }}>{fmt(d.total)}</span>
+                <span className="font-display" style={{ fontSize: '1rem' }}>{mask(d.total)}</span>
               </div>
             ))}
           </div>
@@ -325,7 +343,7 @@ export default function BudgetTab() {
                       fontSize: '0.68rem', fontFamily: 'Jost', fontWeight: 500, whiteSpace: 'nowrap'
                     }}>{item.day.split('—')[0].trim()}</span>
                   </td>
-                  <td style={{ padding: '0.75rem 0.5rem', fontFamily: 'Jost', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmt(item.totalAmount)}</td>
+                  <td style={{ padding: '0.75rem 0.5rem', fontFamily: 'Jost', fontWeight: 600, whiteSpace: 'nowrap' }}>{mask(item.totalAmount)}</td>
                   <td style={{ padding: '0.75rem 0.5rem' }}>
                     <span style={{ color: PAYER_COLORS[item.paidBy], fontFamily: 'Jost', fontSize: '0.78rem', fontWeight: 500, whiteSpace: 'nowrap' }}>{item.paidBy}</span>
                   </td>
@@ -355,7 +373,7 @@ export default function BudgetTab() {
                   Total ({filtered.length} items)
                 </td>
                 <td className="font-display" style={{ padding: '0.75rem 0.5rem', fontSize: '1rem', fontWeight: 600 }}>
-                  {fmt(filtered.reduce((s, i) => s + i.totalAmount, 0))}
+                  {mask(filtered.reduce((s, i) => s + i.totalAmount, 0))}
                 </td>
                 <td colSpan={4} />
               </tr>
