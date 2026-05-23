@@ -47,9 +47,16 @@ export default function Countdown() {
   if (!tl) return null;
 
   return (
-    <div style={{ textAlign: 'right' }}>
-      <p className="font-sans-clean" style={{ color: 'var(--champagne)', fontSize: '0.6rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-        {nextEvent.emoji} Next — {nextEvent.label}
+    <div style={{
+      textAlign: 'right',
+      background: 'rgba(0,0,0,0.32)',
+      backdropFilter: 'blur(6px)',
+      borderRadius: 12,
+      padding: '0.65rem 1rem',
+      border: '1px solid rgba(255,255,255,0.12)',
+    }}>
+      <p className="font-sans-clean" style={{ color: 'var(--champagne)', fontSize: '0.58rem', letterSpacing: '0.25em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+        {nextEvent.emoji} {nextEvent.label}
       </p>
       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
         {[
@@ -59,10 +66,10 @@ export default function Countdown() {
           { val: tl.secs, unit: 'Sec' },
         ].map(({ val, unit }) => (
           <div key={unit} style={{ textAlign: 'center' }}>
-            <div className="font-display" style={{ fontSize: '1.8rem', fontWeight: 300, color: 'var(--cream)', lineHeight: 1 }}>
+            <div className="font-display" style={{ fontSize: '1.8rem', fontWeight: 300, color: 'white', lineHeight: 1 }}>
               {String(val).padStart(2, '0')}
             </div>
-            <div className="font-sans-clean" style={{ fontSize: '0.55rem', color: 'var(--mid-gray)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+            <div className="font-sans-clean" style={{ fontSize: '0.52rem', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
               {unit}
             </div>
           </div>

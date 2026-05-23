@@ -1,5 +1,5 @@
 export type WeddingDay = 'Aug 31 — Welcome Dinner' | 'Sep 1 — Wedding Day' | 'Sep 2 — Pool Party' | 'Sep 3 — Checkout' | 'All Days' | 'N/A';
-export type Payer = 'Us' | "Jeff's Dad" | "FIL's Dad" | 'Shared' | 'Vendor';
+export type Payer = 'Nat/Jeff' | 'Mike' | 'Tony' | 'Shared' | 'Vendor';
 export type PayStatus = 'Paid' | 'Pending' | 'Deposit Paid';
 
 export interface BudgetItem {

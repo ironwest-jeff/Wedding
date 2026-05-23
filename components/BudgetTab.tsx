@@ -4,14 +4,14 @@ import { getBudgetItems, saveBudgetItems } from '@/lib/store';
 import { BudgetItem, WeddingDay, Payer, PayStatus } from '@/lib/types';
 
 const DAYS: WeddingDay[] = ['Aug 31 — Welcome Dinner', 'Sep 1 — Wedding Day', 'Sep 2 — Pool Party', 'Sep 3 — Checkout', 'All Days', 'N/A'];
-const PAYERS: Payer[] = ['Us', "Jeff's Dad", "FIL's Dad", 'Shared', 'Vendor'];
+const PAYERS: Payer[] = ['Nat/Jeff', 'Mike', 'Tony', 'Shared', 'Vendor'];
 const STATUSES: PayStatus[] = ['Pending', 'Deposit Paid', 'Paid'];
 const CATEGORIES = ['Venue', 'Catering & Bar', 'Photography', 'Music & DJ', 'Flowers & Decor', 'Attire', 'Hair & Makeup', 'Transportation', 'Accommodation', 'Invitations & Stationery', 'Favors & Gifts', 'Officiant', 'Rings', 'Entertainment', 'Other'];
 
 const PAYER_COLORS: Record<Payer, string> = {
-  'Us': 'var(--sage)',
-  "Jeff's Dad": 'var(--champagne)',
-  "FIL's Dad": 'var(--dusty-rose)',
+  'Nat/Jeff': 'var(--sage)',
+  'Mike': 'var(--champagne)',
+  'Tony': 'var(--dusty-rose)',
   'Shared': 'var(--mid-gray)',
   'Vendor': '#9B8EA0',
 };
@@ -39,7 +39,7 @@ function genId() { return Math.random().toString(36).slice(2, 10); }
 
 const EMPTY: Omit<BudgetItem, 'id'> = {
   category: 'Venue', description: '', vendor: '', day: 'Sep 1 — Wedding Day',
-  totalAmount: 0, paidBy: 'Us', status: 'Pending', notes: '', dueDate: '',
+  totalAmount: 0, paidBy: 'Nat/Jeff', status: 'Pending', notes: '', dueDate: '',
 };
 
 export default function BudgetTab() {

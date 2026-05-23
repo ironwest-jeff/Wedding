@@ -150,38 +150,38 @@ export const GUEST_SEED: Guest[] = [
 
 export const BUDGET_SEED: BudgetItem[] = [
   // Day 1 — Welcome Dinner
-  budgetItem('Catering & Bar', 'Welcome Party (Pizza, Pasta & Wine)', 'Aug 31 — Welcome Dinner', 15400, 'Us', 'Pending', 'Pizza, Pasta & Wine for 100 guests'),
-  budgetItem('Catering & Bar', 'Aperol & Hugo Spritz Corner', 'Aug 31 — Welcome Dinner', 1760, 'Us', 'Pending', '3 drinks per person × 100 guests'),
-  budgetItem('Catering & Bar', 'Wine', 'Aug 31 — Welcome Dinner', 845, 'Us', 'Pending', '24 bottles — 8 @ €30.80 prosecco, 8 @ €30.80 wine, 8 @ €44.40 wine'),
-  budgetItem('Catering & Bar', 'Beer', 'Aug 31 — Welcome Dinner', 915, 'Us', 'Pending', '150 beers'),
-  budgetItem('Music & DJ', 'DJ — Welcome Party (DJ Matthew)', 'Aug 31 — Welcome Dinner', 2196, "FIL's Dad", 'Deposit Paid', 'Deposit of €1,098 paid by Tony'),
+  budgetItem('Catering & Bar', 'Welcome Party (Pizza, Pasta & Wine)', 'Aug 31 — Welcome Dinner', 15400, 'Nat/Jeff', 'Pending', 'Pizza, Pasta & Wine for 100 guests'),
+  budgetItem('Catering & Bar', 'Aperol & Hugo Spritz Corner', 'Aug 31 — Welcome Dinner', 1760, 'Nat/Jeff', 'Pending', '3 drinks per person × 100 guests'),
+  budgetItem('Catering & Bar', 'Wine', 'Aug 31 — Welcome Dinner', 845, 'Nat/Jeff', 'Pending', '24 bottles — 8 @ €30.80 prosecco, 8 @ €30.80 wine, 8 @ €44.40 wine'),
+  budgetItem('Catering & Bar', 'Beer', 'Aug 31 — Welcome Dinner', 915, 'Nat/Jeff', 'Pending', '150 beers'),
+  budgetItem('Music & DJ', 'DJ — Welcome Party (DJ Matthew)', 'Aug 31 — Welcome Dinner', 2196, 'Tony', 'Deposit Paid', 'Deposit of €1,098 paid by Tony'),
 
   // Day 2 — Wedding Day
-  budgetItem('Venue', 'Wedding Venue (Villa Valentini Bonaparte)', 'Sep 1 — Wedding Day', 46090, "FIL's Dad", 'Deposit Paid', 'Accommodation for 40 guests × 3 nights incl. breakfast. Deposit of €23,045 paid by Tony'),
-  budgetItem('Catering & Bar', 'Wedding Meal', 'Sep 1 — Wedding Day', 27500, 'Us', 'Deposit Paid', 'Deposit of €12,000 paid'),
-  budgetItem('Catering & Bar', 'Dessert (Tiramisu)', 'Sep 1 — Wedding Day', 605, 'Us', 'Pending'),
-  budgetItem('Catering & Bar', 'Cocktail Bar', 'Sep 1 — Wedding Day', 6600, 'Us', 'Pending'),
-  budgetItem('Catering & Bar', 'Water (Pre-Ceremony)', 'Sep 1 — Wedding Day', 550, 'Us', 'Pending'),
-  budgetItem('Flowers & Decor', 'Florals + Stationery', 'Sep 1 — Wedding Day', 14344, "FIL's Dad", 'Deposit Paid', 'Deposit of €1,100 paid by Tony'),
-  budgetItem('Transportation', 'Wedding + Welcome Transport', 'Sep 1 — Wedding Day', 4840, 'Us', 'Pending'),
-  budgetItem('Music & DJ', 'DJ + Sax + Singer + String Trio (Ceremony & Cocktail)', 'Sep 1 — Wedding Day', 9150, "FIL's Dad", 'Deposit Paid', 'DJ set with equipment until 01am. Deposit of €2,250 paid by Tony'),
-  budgetItem('Flowers & Decor', 'Ceremony Cushions', 'Sep 1 — Wedding Day', 244, 'Us', 'Pending'),
-  budgetItem('Venue', 'Dinner Location (Second Food Station)', 'Sep 1 — Wedding Day', 1650, 'Us', 'Pending'),
-  budgetItem('Catering & Bar', 'Vendor Meals', 'Sep 1 — Wedding Day', 1375, 'Us', 'Pending'),
-  budgetItem('Entertainment', 'Arabic Drummers / Zaffa (La Rose Arabe)', 'Sep 1 — Wedding Day', 3000, "FIL's Dad", 'Deposit Paid', '60 min, 3–5 drummers. Deposit of €300 paid by Tony'),
-  budgetItem('Photography', 'Photographer', 'Sep 1 — Wedding Day', 9500, "FIL's Dad", 'Deposit Paid', 'Deposit of €1,500 paid by Tony'),
-  budgetItem('Photography', 'Videographer', 'Sep 1 — Wedding Day', 2500, 'Us', 'Pending'),
-  budgetItem('Catering & Bar', 'Late Night Food', 'Sep 1 — Wedding Day', 1320, 'Us', 'Pending'),
+  budgetItem('Venue', 'Wedding Venue (Villa Valentini Bonaparte)', 'Sep 1 — Wedding Day', 46090, 'Tony', 'Deposit Paid', 'Accommodation for 40 guests × 3 nights incl. breakfast. Deposit of €23,045 paid by Tony'),
+  budgetItem('Catering & Bar', 'Wedding Meal', 'Sep 1 — Wedding Day', 27500, 'Nat/Jeff', 'Deposit Paid', 'Deposit of €12,000 paid'),
+  budgetItem('Catering & Bar', 'Dessert (Tiramisu)', 'Sep 1 — Wedding Day', 605, 'Nat/Jeff', 'Pending'),
+  budgetItem('Catering & Bar', 'Cocktail Bar', 'Sep 1 — Wedding Day', 6600, 'Nat/Jeff', 'Pending'),
+  budgetItem('Catering & Bar', 'Water (Pre-Ceremony)', 'Sep 1 — Wedding Day', 550, 'Nat/Jeff', 'Pending'),
+  budgetItem('Flowers & Decor', 'Florals + Stationery', 'Sep 1 — Wedding Day', 14344, 'Tony', 'Deposit Paid', 'Deposit of €1,100 paid by Tony'),
+  budgetItem('Transportation', 'Wedding + Welcome Transport', 'Sep 1 — Wedding Day', 4840, 'Nat/Jeff', 'Pending'),
+  budgetItem('Music & DJ', 'DJ + Sax + Singer + String Trio (Ceremony & Cocktail)', 'Sep 1 — Wedding Day', 9150, 'Tony', 'Deposit Paid', 'DJ set with equipment until 01am. Deposit of €2,250 paid by Tony'),
+  budgetItem('Flowers & Decor', 'Ceremony Cushions', 'Sep 1 — Wedding Day', 244, 'Nat/Jeff', 'Pending'),
+  budgetItem('Venue', 'Dinner Location (Second Food Station)', 'Sep 1 — Wedding Day', 1650, 'Nat/Jeff', 'Pending'),
+  budgetItem('Catering & Bar', 'Vendor Meals', 'Sep 1 — Wedding Day', 1375, 'Nat/Jeff', 'Pending'),
+  budgetItem('Entertainment', 'Arabic Drummers / Zaffa (La Rose Arabe)', 'Sep 1 — Wedding Day', 3000, 'Tony', 'Deposit Paid', '60 min, 3–5 drummers. Deposit of €300 paid by Tony'),
+  budgetItem('Photography', 'Photographer', 'Sep 1 — Wedding Day', 9500, 'Tony', 'Deposit Paid', 'Deposit of €1,500 paid by Tony'),
+  budgetItem('Photography', 'Videographer', 'Sep 1 — Wedding Day', 2500, 'Nat/Jeff', 'Pending'),
+  budgetItem('Catering & Bar', 'Late Night Food', 'Sep 1 — Wedding Day', 1320, 'Nat/Jeff', 'Pending'),
 
   // Day 3 — Pool Party
-  budgetItem('Catering & Bar', 'Pool Day Food (€80/person)', 'Sep 2 — Pool Party', 5280, 'Us', 'Pending'),
+  budgetItem('Catering & Bar', 'Pool Day Food (€80/person)', 'Sep 2 — Pool Party', 5280, 'Nat/Jeff', 'Pending'),
 
   // All Days
-  budgetItem('Hair & Makeup', 'Make-Up & Hair (Tailor Beauty Design — Iryna)', 'All Days', 1970, "FIL's Dad", 'Deposit Paid', 'Deposit of €590 paid by Tony'),
-  budgetItem('Other', 'Wedding Planner Rossana — Nat & Jeff portion', 'All Days', 2000, 'Us', 'Paid', 'Paid in full. Remaining balance of €3,500 still outstanding'),
-  budgetItem('Other', 'Wedding Planner Rossana — Tony portion', 'All Days', 2000, "FIL's Dad", 'Paid', 'Paid in full by Tony'),
-  budgetItem('Other', 'Wedding Planner Rossana — Remaining balance', 'All Days', 1500, 'Us', 'Pending'),
-  budgetItem('Music & DJ', 'Music Permits (Days 1 & 2)', 'All Days', 0, 'Us', 'Pending', 'Amount TBD'),
+  budgetItem('Hair & Makeup', 'Make-Up & Hair (Tailor Beauty Design — Iryna)', 'All Days', 1970, 'Tony', 'Deposit Paid', 'Deposit of €590 paid by Tony'),
+  budgetItem('Other', 'Wedding Planner Rossana — Nat & Jeff portion', 'All Days', 2000, 'Nat/Jeff', 'Paid', 'Paid in full. Remaining balance of €3,500 still outstanding'),
+  budgetItem('Other', 'Wedding Planner Rossana — Tony portion', 'All Days', 2000, 'Tony', 'Paid', 'Paid in full by Tony'),
+  budgetItem('Other', 'Wedding Planner Rossana — Remaining balance', 'All Days', 1500, 'Nat/Jeff', 'Pending'),
+  budgetItem('Music & DJ', 'Music Permits (Days 1 & 2)', 'All Days', 0, 'Nat/Jeff', 'Pending', 'Amount TBD'),
 ];
 
 export const VILLA_SEED: VillaRoom[] = [
