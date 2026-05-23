@@ -3,13 +3,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-const ALLOWED = new Set([
-  'jeff.west89@gmail.com',
-  'nathalierahil@gmail.com',
-  'rossana.sapori@theknotinitaly.it',
-  'rossana@theknotinitaly.it',
-]);
-
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -27,12 +20,22 @@ export default function LoginPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setLoading(true);
     const addr = email.toLowerCase().trim();
-    if (!ALLOWED.has(addr)) {
+
+    // Check against the allowed_emails table in Supabase
+    const { data } = await supabase
+      .from('allowed_emails')
+      .select('email')
+      .eq('email', addr)
+      .single();
+
+    if (!data) {
       setError('That email isn\'t on the list. Contact Jeff or Nat to get access.');
+      setLoading(false);
       return;
     }
-    setLoading(true);
+
     const { error: err } = await supabase.auth.signInWithOtp({
       email: addr,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
