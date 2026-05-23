@@ -63,6 +63,15 @@ export default function GuestListTab() {
     if (confirm('Remove this guest?')) save(guests.filter(g => g.id !== id));
   }
 
+  function cycleRsvp(id: string) {
+    const order: RSVPStatus[] = ['Pending', 'Confirmed', 'Declined'];
+    save(guests.map(g => {
+      if (g.id !== id) return g;
+      const next = order[(order.indexOf(g.rsvp) + 1) % order.length];
+      return { ...g, rsvp: next };
+    }));
+  }
+
   function startEdit(g: Guest) { setEditing(g); setForm({ ...g }); setShowForm(true); }
 
   function toggleDay(day: WeddingDay) {
@@ -251,6 +260,21 @@ export default function GuestListTab() {
                         </span>
                       ))}
                     </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); cycleRsvp(g.id); }}
+                      title={g.rsvp === 'Confirmed' ? 'Confirmed — click to set Pending' : g.rsvp === 'Declined' ? 'Declined — click to set Pending' : 'Click to Confirm'}
+                      style={{
+                        padding: '0.3rem 0.6rem',
+                        border: `1px solid ${g.rsvp === 'Confirmed' ? '#276237' : g.rsvp === 'Declined' ? '#721C24' : 'var(--light-gray)'}`,
+                        borderRadius: '6px', cursor: 'pointer',
+                        background: g.rsvp === 'Confirmed' ? '#D4EDDA' : g.rsvp === 'Declined' ? '#F8D7DA' : 'white',
+                        color: g.rsvp === 'Confirmed' ? '#276237' : g.rsvp === 'Declined' ? '#721C24' : 'var(--mid-gray)',
+                        fontSize: '0.72rem', fontFamily: 'Jost', fontWeight: 500,
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {g.rsvp === 'Confirmed' ? '✓ Confirmed' : g.rsvp === 'Declined' ? '✕ Declined' : '○ Confirm?'}
+                    </button>
                     <button onClick={e => { e.stopPropagation(); startEdit(g); }} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', fontSize: '0.7rem' }}>✎</button>
                     <button onClick={e => { e.stopPropagation(); deleteGuest(g.id); }} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', color: 'var(--dusty-rose)', fontSize: '0.7rem' }}>✕</button>
                     <span style={{ color: 'var(--mid-gray)', fontSize: '0.7rem' }}>{expandedId === g.id ? '▲' : '▼'}</span>
