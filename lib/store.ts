@@ -18,8 +18,8 @@ export function saveLS<T>(key: string, value: T): void {
 export function getBudgetItems(): BudgetItem[] { return getLS('budget_items', BUDGET_SEED); }
 export function saveBudgetItems(items: BudgetItem[]) { saveLS('budget_items', items); }
 
-export function getGuests(): Guest[] { return getLS('guests', GUEST_SEED); }
-export function saveGuests(guests: Guest[]) { saveLS('guests', guests); }
+export function getGuests(): Guest[] { return getLS('guests_v2', GUEST_SEED); }
+export function saveGuests(guests: Guest[]) { saveLS('guests_v2', guests); }
 
 export function getChecklist(): ChecklistItem[] { return getLS('checklist', []); }
 export function saveChecklist(items: ChecklistItem[]) { saveLS('checklist', items); }

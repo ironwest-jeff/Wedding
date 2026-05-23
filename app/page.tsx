@@ -72,7 +72,7 @@ export default function Home() {
             fontSize: '0.72rem', marginTop: '0.6rem',
             letterSpacing: '0.22em', color: 'rgba(255,255,255,0.82)',
           }}>
-            AUG 31 – SEP 3, 2025
+            AUG 31 – SEP 3, 2026
           </p>
         </div>
       </div>

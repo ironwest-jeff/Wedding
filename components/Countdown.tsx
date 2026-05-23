@@ -4,15 +4,15 @@ import { useEffect, useState } from 'react';
 const EVENTS = [
   {
     label: 'Toronto',
-    subtitle: 'Jul 11, 2025',
-    date: new Date('2025-07-11T18:00:00'),
+    subtitle: 'Jul 11, 2026',
+    date: new Date('2026-07-11T18:00:00'),
     emoji: '🍁',
     doneLabel: 'Toronto ✓',
   },
   {
     label: 'Italy',
-    subtitle: 'Aug 31, 2025',
-    date: new Date('2025-08-31T17:00:00'),
+    subtitle: 'Aug 31, 2026',
+    date: new Date('2026-08-31T17:00:00'),
     emoji: '🇮🇹',
     doneLabel: 'Italy ✓',
   },
