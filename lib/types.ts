@@ -18,6 +18,7 @@ export interface BudgetItem {
 export type DietaryRestriction = 'None' | 'Vegetarian' | 'Vegan' | 'Gluten-Free' | 'Kosher' | 'Halal' | 'Nut Allergy' | 'Dairy-Free' | 'Other';
 export type RSVPStatus = 'Confirmed' | 'Pending' | 'Declined';
 export type Accommodation = 'Hotel' | 'Airbnb' | 'Family Home' | 'Other' | 'Local — No Stay';
+export type GuestSide = 'J' | 'N' | 'Both';
 
 export interface Guest {
   id: string;
@@ -25,6 +26,7 @@ export interface Guest {
   lastName: string;
   email?: string;
   phone?: string;
+  side: GuestSide;
   rsvp: RSVPStatus;
   dietary: DietaryRestriction;
   dietaryNotes?: string;
@@ -33,7 +35,23 @@ export interface Guest {
   days: WeddingDay[];
   plusOne?: string;
   notes?: string;
-  group?: string; // family/friend group label
+  group?: string;
+}
+
+export type VillaLocation = 'Main Villa' | 'Second Villa';
+
+export interface VillaRoom {
+  id: string;
+  roomName: string;
+  location: VillaLocation;
+  roomType: string;
+  guests: string;
+  guestCount: number;
+  costEUR: number;
+  amountPaidEUR: number;
+  payStatus: PayStatus;
+  includedInVenue: boolean;
+  notes?: string;
 }
 
 export type ChecklistCategory = 'Venue' | 'Catering' | 'Music' | 'Flowers' | 'Attire' | 'Photography' | 'Logistics' | 'Invitations' | 'Legal' | 'Other';

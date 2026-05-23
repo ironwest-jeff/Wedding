@@ -1,12 +1,17 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { getGuests, saveGuests } from '@/lib/store';
-import { Guest, RSVPStatus, DietaryRestriction, Accommodation, WeddingDay } from '@/lib/types';
+import { Guest, GuestSide, RSVPStatus, DietaryRestriction, Accommodation, WeddingDay } from '@/lib/types';
 
 const RSVP_STATUSES: RSVPStatus[] = ['Confirmed', 'Pending', 'Declined'];
 const DIETARY: DietaryRestriction[] = ['None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Kosher', 'Halal', 'Nut Allergy', 'Dairy-Free', 'Other'];
 const ACCOMMODATIONS: Accommodation[] = ['Hotel', 'Airbnb', 'Family Home', 'Other', 'Local — No Stay'];
 const DAYS: WeddingDay[] = ['Aug 31 — Welcome Dinner', 'Sep 1 — Wedding Day', 'Sep 2 — Pool Party', 'Sep 3 — Checkout'];
+const SIDES: { value: GuestSide; label: string }[] = [
+  { value: 'J', label: "Jeff's Side" },
+  { value: 'N', label: "Nat's Side" },
+  { value: 'Both', label: 'Both' },
+];
 
 const RSVP_STYLE: Record<RSVPStatus, { bg: string; color: string }> = {
   'Confirmed': { bg: '#D4EDDA', color: '#276237' },
@@ -14,12 +19,18 @@ const RSVP_STYLE: Record<RSVPStatus, { bg: string; color: string }> = {
   'Declined': { bg: '#F8D7DA', color: '#721C24' },
 };
 
+const SIDE_STYLE: Record<GuestSide, { bg: string; color: string; label: string }> = {
+  'J': { bg: '#E8EFF8', color: '#1A3A6B', label: 'J' },
+  'N': { bg: '#F8E8EF', color: '#6B1A3A', label: 'N' },
+  'Both': { bg: '#EEF0E8', color: '#3A4A1A', label: 'J+N' },
+};
+
 function genId() { return Math.random().toString(36).slice(2, 10); }
 
 const EMPTY: Omit<Guest, 'id'> = {
   firstName: '', lastName: '', email: '', phone: '',
-  rsvp: 'Pending', dietary: 'None', dietaryNotes: '',
-  accommodation: 'Hotel', accommodationNotes: '',
+  side: 'J', rsvp: 'Pending', dietary: 'None', dietaryNotes: '',
+  accommodation: 'Other', accommodationNotes: '',
   days: ['Sep 1 — Wedding Day'], plusOne: '', notes: '', group: '',
 };
 
@@ -29,8 +40,8 @@ export default function GuestListTab() {
   const [editing, setEditing] = useState<Guest | null>(null);
   const [form, setForm] = useState<Omit<Guest, 'id'>>(EMPTY);
   const [filterRsvp, setFilterRsvp] = useState<RSVPStatus | 'All'>('All');
+  const [filterSide, setFilterSide] = useState<GuestSide | 'All'>('All');
   const [filterDay, setFilterDay] = useState<WeddingDay | 'All'>('All');
-  const [filterAccom, setFilterAccom] = useState<Accommodation | 'All'>('All');
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -39,7 +50,7 @@ export default function GuestListTab() {
   function save(updated: Guest[]) { setGuests(updated); saveGuests(updated); }
 
   function handleSubmit() {
-    if (!form.firstName || !form.lastName) return;
+    if (!form.firstName) return;
     if (editing) {
       save(guests.map(g => g.id === editing.id ? { ...form, id: editing.id } : g));
     } else {
@@ -60,13 +71,15 @@ export default function GuestListTab() {
 
   const filtered = guests
     .filter(g => filterRsvp === 'All' || g.rsvp === filterRsvp)
+    .filter(g => filterSide === 'All' || g.side === filterSide)
     .filter(g => filterDay === 'All' || g.days.includes(filterDay))
-    .filter(g => filterAccom === 'All' || g.accommodation === filterAccom)
     .filter(g => !search || `${g.firstName} ${g.lastName} ${g.group}`.toLowerCase().includes(search.toLowerCase()));
 
   const total = guests.length;
   const confirmed = guests.filter(g => g.rsvp === 'Confirmed').length;
   const pending = guests.filter(g => g.rsvp === 'Pending').length;
+  const jeffCount = guests.filter(g => g.side === 'J').length;
+  const natCount = guests.filter(g => g.side === 'N').length;
 
   const card = { background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid var(--light-gray)' };
   const inputStyle: React.CSSProperties = { width: '100%', padding: '0.6rem 0.8rem', border: '1px solid var(--light-gray)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'Jost, sans-serif', background: 'var(--warm-white)', color: 'var(--charcoal)', outline: 'none' };
@@ -74,13 +87,14 @@ export default function GuestListTab() {
   return (
     <div>
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total Guests', value: total, color: 'var(--charcoal)' },
+          { label: 'Total Groups', value: total, color: 'var(--charcoal)' },
           { label: 'Confirmed', value: confirmed, color: 'var(--deep-sage)' },
           { label: 'Pending', value: pending, color: 'var(--champagne)' },
+          { label: "Jeff's Side", value: jeffCount, color: '#1A3A6B' },
+          { label: "Nat's Side", value: natCount, color: '#6B1A3A' },
           { label: 'Declined', value: guests.filter(g => g.rsvp === 'Declined').length, color: 'var(--dusty-rose)' },
-          { label: 'With Dietary Needs', value: guests.filter(g => g.dietary !== 'None').length, color: 'var(--sage)' },
         ].map(s => (
           <div key={s.label} style={{ ...card, padding: '1rem' }}>
             <p className="font-sans-clean" style={{ fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.4rem' }}>{s.label}</p>
@@ -93,6 +107,10 @@ export default function GuestListTab() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', flex: 1 }}>
           <input style={{ ...inputStyle, maxWidth: '200px' }} placeholder="Search guests..." value={search} onChange={e => setSearch(e.target.value)} />
+          <select style={{ ...inputStyle, width: 'auto' }} value={filterSide} onChange={e => setFilterSide(e.target.value as any)}>
+            <option value="All">All Sides</option>
+            {SIDES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
           <select style={{ ...inputStyle, width: 'auto' }} value={filterRsvp} onChange={e => setFilterRsvp(e.target.value as any)}>
             <option value="All">All RSVPs</option>
             {RSVP_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -100,10 +118,6 @@ export default function GuestListTab() {
           <select style={{ ...inputStyle, width: 'auto' }} value={filterDay} onChange={e => setFilterDay(e.target.value as any)}>
             <option value="All">All Days</option>
             {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select style={{ ...inputStyle, width: 'auto' }} value={filterAccom} onChange={e => setFilterAccom(e.target.value as any)}>
-            <option value="All">All Accommodation</option>
-            {ACCOMMODATIONS.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
         <button onClick={() => { setForm(EMPTY); setEditing(null); setShowForm(true); }} style={{ padding: '0.65rem 1.5rem', background: 'var(--charcoal)', color: 'var(--cream)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>+ Add Guest</button>
@@ -116,11 +130,11 @@ export default function GuestListTab() {
             <h2 className="font-display" style={{ fontSize: '1.5rem', marginBottom: '1.5rem', fontWeight: 400 }}>{editing ? 'Edit Guest' : 'Add Guest'}</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>First Name *</label>
+                <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>First Name / Full Name *</label>
                 <input style={inputStyle} value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} />
               </div>
               <div>
-                <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Last Name *</label>
+                <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Last Name</label>
                 <input style={inputStyle} value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} />
               </div>
               <div>
@@ -128,8 +142,10 @@ export default function GuestListTab() {
                 <input style={inputStyle} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
               </div>
               <div>
-                <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Phone</label>
-                <input style={inputStyle} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
+                <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Side</label>
+                <select style={inputStyle} value={form.side} onChange={e => setForm(f => ({ ...f, side: e.target.value as GuestSide }))}>
+                  {SIDES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
               </div>
               <div>
                 <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>RSVP</label>
@@ -140,6 +156,10 @@ export default function GuestListTab() {
               <div>
                 <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Group / Family</label>
                 <input style={inputStyle} value={form.group} onChange={e => setForm(f => ({ ...f, group: e.target.value }))} placeholder="e.g. Smith Family" />
+              </div>
+              <div>
+                <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Phone</label>
+                <input style={inputStyle} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
               </div>
               <div>
                 <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Dietary</label>
@@ -196,61 +216,68 @@ export default function GuestListTab() {
       {/* Guest Cards */}
       {filtered.length === 0 ? (
         <div style={{ ...card, textAlign: 'center', padding: '3rem' }}>
-          <p className="font-display" style={{ fontSize: '1.5rem', fontStyle: 'italic', color: 'var(--mid-gray)' }}>No guests yet</p>
+          <p className="font-display" style={{ fontSize: '1.5rem', fontStyle: 'italic', color: 'var(--mid-gray)' }}>No guests found</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-          {filtered.map(g => (
-            <div key={g.id} style={{ ...card, padding: '0' }}>
-              <div
-                style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', cursor: 'pointer' }}
-                onClick={() => setExpandedId(expandedId === g.id ? null : g.id)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--light-gray)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cormorant Garamond', fontSize: '1rem', color: 'var(--mid-gray)', flexShrink: 0 }}>
-                    {g.firstName[0]}{g.lastName[0]}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 500, fontSize: '0.95rem' }}>{g.firstName} {g.lastName}
-                      {g.plusOne && <span style={{ fontSize: '0.75rem', color: 'var(--mid-gray)', marginLeft: '0.5rem' }}>+ {g.plusOne}</span>}
+          {filtered.map(g => {
+            const sideStyle = SIDE_STYLE[g.side || 'J'];
+            const initials = g.firstName[0] + (g.lastName?.[0] || '');
+            return (
+              <div key={g.id} style={{ ...card, padding: '0' }}>
+                <div
+                  style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', cursor: 'pointer' }}
+                  onClick={() => setExpandedId(expandedId === g.id ? null : g.id)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--light-gray)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cormorant Garamond', fontSize: '1rem', color: 'var(--mid-gray)', flexShrink: 0 }}>
+                      {initials}
                     </div>
-                    {g.group && <div style={{ fontSize: '0.72rem', color: 'var(--mid-gray)', fontFamily: 'Jost' }}>{g.group}</div>}
+                    <div>
+                      <div style={{ fontWeight: 500, fontSize: '0.95rem' }}>{g.firstName} {g.lastName}
+                        {g.plusOne && <span style={{ fontSize: '0.75rem', color: 'var(--mid-gray)', marginLeft: '0.5rem' }}>+ {g.plusOne}</span>}
+                      </div>
+                      {g.email && <div style={{ fontSize: '0.72rem', color: 'var(--mid-gray)', fontFamily: 'Jost' }}>{g.email}</div>}
+                    </div>
+                    <span style={{ background: sideStyle.bg, color: sideStyle.color, borderRadius: '4px', padding: '0.2rem 0.5rem', fontSize: '0.65rem', fontFamily: 'Jost', fontWeight: 600, letterSpacing: '0.05em' }}>{sideStyle.label}</span>
+                    <span style={{ ...RSVP_STYLE[g.rsvp], borderRadius: '4px', padding: '0.2rem 0.6rem', fontSize: '0.68rem', fontFamily: 'Jost' }}>{g.rsvp}</span>
+                    {g.dietary !== 'None' && <span style={{ background: '#E8F4F8', color: '#0C5460', borderRadius: '4px', padding: '0.2rem 0.6rem', fontSize: '0.68rem', fontFamily: 'Jost' }}>{g.dietary}</span>}
                   </div>
-                  <span style={{ ...RSVP_STYLE[g.rsvp], borderRadius: '4px', padding: '0.2rem 0.6rem', fontSize: '0.68rem', fontFamily: 'Jost' }}>{g.rsvp}</span>
-                  {g.dietary !== 'None' && <span style={{ background: '#E8F4F8', color: '#0C5460', borderRadius: '4px', padding: '0.2rem 0.6rem', fontSize: '0.68rem', fontFamily: 'Jost' }}>{g.dietary}</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                      {g.days.map(d => (
+                        <span key={d} style={{ background: 'var(--charcoal)', color: 'white', borderRadius: '3px', padding: '0.15rem 0.4rem', fontSize: '0.62rem', fontFamily: 'Jost' }}>
+                          {d.split(' ')[0]} {d.split(' ')[1]}
+                        </span>
+                      ))}
+                    </div>
+                    <button onClick={e => { e.stopPropagation(); startEdit(g); }} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', fontSize: '0.7rem' }}>✎</button>
+                    <button onClick={e => { e.stopPropagation(); deleteGuest(g.id); }} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', color: 'var(--dusty-rose)', fontSize: '0.7rem' }}>✕</button>
+                    <span style={{ color: 'var(--mid-gray)', fontSize: '0.7rem' }}>{expandedId === g.id ? '▲' : '▼'}</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    {g.days.map(d => (
-                      <span key={d} style={{ background: 'var(--charcoal)', color: 'white', borderRadius: '3px', padding: '0.15rem 0.4rem', fontSize: '0.62rem', fontFamily: 'Jost' }}>
-                        {d.split(' ')[0]} {d.split(' ')[1]}
-                      </span>
+                {expandedId === g.id && (
+                  <div style={{ borderTop: '1px solid var(--light-gray)', padding: '1rem 1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', background: 'var(--warm-white)', borderRadius: '0 0 12px 12px' }}>
+                    {[
+                      { label: 'Email', val: g.email || '—' },
+                      { label: 'Phone', val: g.phone || '—' },
+                      { label: 'Side', val: g.side === 'J' ? "Jeff's Side" : g.side === 'N' ? "Nat's Side" : 'Both' },
+                      { label: 'Accommodation', val: `${g.accommodation}${g.accommodationNotes ? ` — ${g.accommodationNotes}` : ''}` },
+                      { label: 'Dietary', val: `${g.dietary}${g.dietaryNotes ? `: ${g.dietaryNotes}` : ''}` },
+                      { label: 'Days Attending', val: g.days.join(', ') || '—' },
+                      ...(g.group ? [{ label: 'Group', val: g.group }] : []),
+                      ...(g.notes ? [{ label: 'Notes', val: g.notes }] : []),
+                    ].map(({ label, val }) => (
+                      <div key={label}>
+                        <p className="font-sans-clean" style={{ fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.2rem' }}>{label}</p>
+                        <p style={{ fontSize: '0.82rem' }}>{val}</p>
+                      </div>
                     ))}
                   </div>
-                  <button onClick={e => { e.stopPropagation(); startEdit(g); }} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', fontSize: '0.7rem' }}>✎</button>
-                  <button onClick={e => { e.stopPropagation(); deleteGuest(g.id); }} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', color: 'var(--dusty-rose)', fontSize: '0.7rem' }}>✕</button>
-                  <span style={{ color: 'var(--mid-gray)', fontSize: '0.7rem' }}>{expandedId === g.id ? '▲' : '▼'}</span>
-                </div>
+                )}
               </div>
-              {expandedId === g.id && (
-                <div style={{ borderTop: '1px solid var(--light-gray)', padding: '1rem 1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', background: 'var(--warm-white)', borderRadius: '0 0 12px 12px' }}>
-                  {[
-                    { label: 'Email', val: g.email || '—' },
-                    { label: 'Phone', val: g.phone || '—' },
-                    { label: 'Accommodation', val: `${g.accommodation}${g.accommodationNotes ? ` — ${g.accommodationNotes}` : ''}` },
-                    { label: 'Dietary', val: `${g.dietary}${g.dietaryNotes ? `: ${g.dietaryNotes}` : ''}` },
-                    { label: 'Days Attending', val: g.days.join(', ') || '—' },
-                    ...(g.notes ? [{ label: 'Notes', val: g.notes }] : []),
-                  ].map(({ label, val }) => (
-                    <div key={label}>
-                      <p className="font-sans-clean" style={{ fontSize: '0.62rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.2rem' }}>{label}</p>
-                      <p style={{ fontSize: '0.82rem' }}>{val}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
