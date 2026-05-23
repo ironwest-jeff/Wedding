@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+:root {
+  --cream: #FAF7F2;
+  --warm-white: #FFFEF9;
+  --blush: #E8C4B8;
+  --dusty-rose: #C9897A;
+  --sage: #8B9E88;
+  --deep-sage: #5A6E57;
+  --champagne: #D4A96A;
+  --deep-champagne: #B8874A;
+  --charcoal: #2C2C2C;
+  --mid-gray: #6B6B6B;
+  --light-gray: #E8E5E0;
+  --gold: #C9A96E;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--cream);
+  color: var(--charcoal);
+  font-family: 'Lora', Georgia, serif;
+  min-height: 100vh;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500&display=swap');
+
+.font-display {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-body {
+  font-family: 'Lora', Georgia, serif;
+}
+
+.font-sans-clean {
+  font-family: 'Jost', sans-serif;
+}
+
+input, select, textarea {
+  font-family: 'Jost', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--light-gray); }
+::-webkit-scrollbar-thumb { background: var(--blush); border-radius: 3px; }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes pulse-gold {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
