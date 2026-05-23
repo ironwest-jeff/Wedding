@@ -49,6 +49,16 @@ export default function VillaTab() {
   function startEdit(r: VillaRoom) { setEditing(r); setForm({ ...r }); setShowForm(true); }
   function deleteRoom(id: string) { if (confirm('Remove this room?')) save(rooms.filter(r => r.id !== id)); }
 
+  function cyclePayStatus(id: string) {
+    const order: PayStatus[] = ['Pending', 'Deposit Paid', 'Paid'];
+    save(rooms.map(r => {
+      if (r.id !== id) return r;
+      const next = order[(order.indexOf(r.payStatus) + 1) % order.length];
+      const amountPaidEUR = next === 'Paid' ? r.costEUR : next === 'Pending' ? 0 : r.amountPaidEUR;
+      return { ...r, payStatus: next, amountPaidEUR };
+    }));
+  }
+
   const filtered = filterLocation === 'All' ? rooms : rooms.filter(r => r.location === filterLocation);
   const mainRooms = filtered.filter(r => r.location === 'Main Villa');
   const secondRooms = filtered.filter(r => r.location === 'Second Villa');
@@ -94,7 +104,13 @@ export default function VillaTab() {
             <div style={{ width: '120px', height: '4px', background: 'var(--light-gray)', borderRadius: '2px' }}>
               <div style={{ width: `${paidPct}%`, height: '100%', background: paidPct === 100 ? 'var(--deep-sage)' : 'var(--champagne)', borderRadius: '2px', transition: 'width 0.3s' }} />
             </div>
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => cyclePayStatus(r.id)}
+                style={{ padding: '0.3rem 0.7rem', border: 'none', borderRadius: '6px', cursor: 'pointer', background: ps.bg, color: ps.color, fontSize: '0.7rem', fontFamily: 'Jost', fontWeight: 500 }}
+              >
+                {r.payStatus === 'Paid' ? '✓ Paid' : r.payStatus === 'Deposit Paid' ? '½ Deposit Paid' : '$ Pending'}
+              </button>
               <button onClick={() => startEdit(r)} style={{ padding: '0.3rem 0.6rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', fontSize: '0.7rem' }}>✎ Edit</button>
               <button onClick={() => deleteRoom(r.id)} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', color: 'var(--dusty-rose)', fontSize: '0.7rem' }}>✕</button>
             </div>
