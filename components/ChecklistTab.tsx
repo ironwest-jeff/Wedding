@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getChecklist, saveChecklist } from '@/lib/store';
+import { getChecklist, saveChecklist, syncChecklist } from '@/lib/store';
 import { ChecklistItem, ChecklistCategory, ChecklistPriority } from '@/lib/types';
 
 const CATEGORIES: ChecklistCategory[] = ['Venue', 'Catering', 'Music', 'Flowers', 'Attire', 'Photography', 'Logistics', 'Invitations', 'Legal', 'Other'];
@@ -27,7 +27,11 @@ export default function ChecklistTab() {
   const [filterPri, setFilterPri] = useState<ChecklistPriority | 'All'>('All');
   const [showDone, setShowDone] = useState(false);
 
-  useEffect(() => { setItems(getChecklist()); }, []);
+  useEffect(() => {
+    const local = getChecklist();
+    setItems(local);
+    syncChecklist(local).then(fresh => setItems(fresh));
+  }, []);
 
   function save(updated: ChecklistItem[]) { setItems(updated); saveChecklist(updated); }
 

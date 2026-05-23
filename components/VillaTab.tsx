@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getVillaRooms, saveVillaRooms } from '@/lib/store';
+import { getVillaRooms, saveVillaRooms, syncVillaRooms } from '@/lib/store';
 import { VillaRoom, VillaLocation, PayStatus } from '@/lib/types';
 
 const PAY_STATUSES: PayStatus[] = ['Pending', 'Deposit Paid', 'Paid'];
@@ -28,7 +28,11 @@ export default function VillaTab() {
   const [form, setForm] = useState<Omit<VillaRoom, 'id'>>(EMPTY_ROOM);
   const [filterLocation, setFilterLocation] = useState<VillaLocation | 'All'>('All');
 
-  useEffect(() => { setRooms(getVillaRooms()); }, []);
+  useEffect(() => {
+    const local = getVillaRooms();
+    setRooms(local);
+    syncVillaRooms(local).then(fresh => setRooms(fresh));
+  }, []);
 
   function save(updated: VillaRoom[]) { setRooms(updated); saveVillaRooms(updated); }
 

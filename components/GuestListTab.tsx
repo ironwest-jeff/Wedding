@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getGuests, saveGuests } from '@/lib/store';
+import { getGuests, saveGuests, syncGuests } from '@/lib/store';
 import { Guest, GuestSide, RSVPStatus, DietaryRestriction, Accommodation, WeddingDay } from '@/lib/types';
 
 const RSVP_STATUSES: RSVPStatus[] = ['Confirmed', 'Pending', 'Declined'];
@@ -45,7 +45,11 @@ export default function GuestListTab() {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  useEffect(() => { setGuests(getGuests()); }, []);
+  useEffect(() => {
+    const local = getGuests();
+    setGuests(local);
+    syncGuests(local).then(fresh => setGuests(fresh));
+  }, []);
 
   function save(updated: Guest[]) { setGuests(updated); saveGuests(updated); }
 

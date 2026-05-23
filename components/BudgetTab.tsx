@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getBudgetItems, saveBudgetItems } from '@/lib/store';
+import { getBudgetItems, saveBudgetItems, syncBudgetItems } from '@/lib/store';
 import { BudgetItem, WeddingDay, Payer, PayStatus } from '@/lib/types';
 
 const DAYS: WeddingDay[] = ['Aug 31 — Welcome Dinner', 'Sep 1 — Wedding Day', 'Sep 2 — Pool Party', 'Sep 3 — Checkout', 'All Days', 'N/A'];
@@ -52,7 +52,11 @@ export default function BudgetTab() {
   const [filterStatus, setFilterStatus] = useState<PayStatus | 'All'>('All');
   const [sortBy, setSortBy] = useState<'amount' | 'category' | 'day'>('category');
 
-  useEffect(() => { setItems(getBudgetItems()); }, []);
+  useEffect(() => {
+    const local = getBudgetItems();
+    setItems(local);
+    syncBudgetItems(local).then(fresh => setItems(fresh));
+  }, []);
 
   function save(updated: BudgetItem[]) {
     setItems(updated);

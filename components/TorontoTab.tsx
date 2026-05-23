@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getTorontoBudget, saveTorontoBudget, getTorontoChecklist, saveTorontoChecklist } from '@/lib/store';
+import { getTorontoBudget, saveTorontoBudget, getTorontoChecklist, saveTorontoChecklist, syncTorontoBudget, syncTorontoChecklist } from '@/lib/store';
 import { TorontoBudgetItem, TorontoChecklistItem, PayStatus, ChecklistPriority } from '@/lib/types';
 
 const CATEGORIES = ['Church', 'Dinner Venue', 'Catering', 'Photography', 'Flowers & Decor', 'Attire', 'Music', 'Transportation', 'Invitations', 'Other'];
@@ -38,7 +38,14 @@ export default function TorontoTab() {
   const [budgetForm, setBudgetForm] = useState<Omit<TorontoBudgetItem, 'id'>>(EMPTY_BUDGET);
   const [taskForm, setTaskForm] = useState<Omit<TorontoChecklistItem, 'id'>>(EMPTY_TASK);
 
-  useEffect(() => { setBudgetItems(getTorontoBudget()); setChecklist(getTorontoChecklist()); }, []);
+  useEffect(() => {
+    const localBudget = getTorontoBudget();
+    const localCheck = getTorontoChecklist();
+    setBudgetItems(localBudget);
+    setChecklist(localCheck);
+    syncTorontoBudget(localBudget).then(fresh => setBudgetItems(fresh));
+    syncTorontoChecklist(localCheck).then(fresh => setChecklist(fresh));
+  }, []);
 
   function saveBudget(updated: TorontoBudgetItem[]) { setBudgetItems(updated); saveTorontoBudget(updated); }
   function saveCheck(updated: TorontoChecklistItem[]) { setChecklist(updated); saveTorontoChecklist(updated); }

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getGuests } from '@/lib/store';
+import { getGuests, syncGuests, getSeating, saveSeating, syncSeating } from '@/lib/store';
 import { Guest } from '@/lib/types';
 
 // Vertical serpentine: 2 arms side-by-side, arc connects at the bottom
@@ -42,11 +42,6 @@ const ARC_W = ARC_RIGHT - ARC_LEFT;  // 184px
 const TOTAL_SEATS = ARM_A_ROWS * 2 + ARM_B_ROWS * 2; // 106
 
 type SeatingMap = Record<string, string>;
-function lsGet(): SeatingMap {
-  if (typeof window === 'undefined') return {};
-  try { return JSON.parse(localStorage.getItem('seating') || '{}'); } catch { return {}; }
-}
-function lsSave(s: SeatingMap) { localStorage.setItem('seating', JSON.stringify(s)); }
 
 const SIDE_BG: Record<string, string> = { J: '#D6E8F5', N: '#F5D6E8', Both: '#D6F5DC' };
 const SIDE_BD: Record<string, string> = { J: '#90B8D8', N: '#D890B8', Both: '#90D8A8' };
@@ -58,8 +53,12 @@ export default function SeatingTab() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    setGuests(getGuests());
-    setSeating(lsGet());
+    const localGuests = getGuests();
+    const localSeating = getSeating();
+    setGuests(localGuests);
+    setSeating(localSeating);
+    syncGuests(localGuests).then(fresh => setGuests(fresh));
+    syncSeating(localSeating).then(fresh => setSeating(fresh));
   }, []);
 
   const guestMap = Object.fromEntries(guests.map(g => [g.id, g]));
@@ -83,7 +82,7 @@ export default function SeatingTab() {
     for (const s of Object.keys(updated)) { if (updated[s] === gid) delete updated[s]; }
     updated[activeSeat] = gid;
     setSeating(updated);
-    lsSave(updated);
+    saveSeating(updated);
     setActiveSeat(null);
   }
 
@@ -91,14 +90,14 @@ export default function SeatingTab() {
     const updated = { ...seating };
     delete updated[sid];
     setSeating(updated);
-    lsSave(updated);
+    saveSeating(updated);
     setActiveSeat(null);
   }
 
   function clearAll() {
     if (!confirm('Clear all seating assignments?')) return;
     setSeating({});
-    lsSave({});
+    saveSeating({});
     setActiveSeat(null);
   }
 
