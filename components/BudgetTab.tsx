@@ -157,11 +157,13 @@ export default function BudgetTab() {
   const totalPaid      = items.reduce((s, i) => s + (i.payments ?? []).reduce((ps, p) => ps + p.amount, 0), 0);
   const totalCash      = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.isCash).reduce((ps, p) => ps + p.amount, 0), 0);
   const totalRemaining = Math.max(0, totalBudget - totalPaid);
-  const tonyTarget     = Math.max(0, totalBudget - jeffNatTarget - mikeTarget);
 
   const actualJeffNat = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.paidBy === 'Jeff' || p.paidBy === 'Nat').reduce((ps, p) => ps + p.amount, 0), 0);
   const actualMike    = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.paidBy === 'Mike').reduce((ps, p) => ps + p.amount, 0), 0);
+  const actualOther   = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.paidBy === 'Other' || p.paidBy === 'Shared').reduce((ps, p) => ps + p.amount, 0), 0);
   const actualTony    = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.paidBy === 'Tony').reduce((ps, p) => ps + p.amount, 0), 0);
+  // Tony's target = whatever is left after Jeff/Nat target, Mike target, and any Other/Shared payments
+  const tonyTarget    = Math.max(0, totalBudget - jeffNatTarget - mikeTarget - actualOther);
 
   // ── Filtering & grouping by day ────────────────────────────────────────────
   const filtered = items
@@ -238,35 +240,44 @@ export default function BudgetTab() {
       <div style={{ ...card, marginBottom: '1.5rem' }}>
         <h2 className="font-display" style={{ fontSize: '1.3rem', marginBottom: '1rem', fontWeight: 400 }}>Contribution Dashboard</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+
+          {/* Other — no fixed target, reduces Tony's balance */}
+          {actualOther > 0 && (
+            <div style={{ background: 'var(--cream)', borderRadius: '10px', padding: '1rem', border: '1px dashed #C8BFC8' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color: '#9B8EA0' }}>Other / Shared</span>
+                <span className="font-sans-clean" style={{ fontSize: '0.6rem', color: 'var(--mid-gray)', fontStyle: 'italic' }}>no fixed amount</span>
+              </div>
+              <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.15rem' }}>{mask(actualOther)}</div>
+              <div className="font-sans-clean" style={{ fontSize: '0.68rem', color: 'var(--mid-gray)' }}>
+                paid · reduces Tony&apos;s balance
+              </div>
+            </div>
+          )}
+
+          {/* Jeff & Nat, Mike — editable targets */}
           {[
-            { key: 'jn',   label: 'Jeff & Nat', target: jeffNatTarget, actual: actualJeffNat, editable: true,  color: 'var(--sage)' },
-            { key: 'mike', label: 'Mike',        target: mikeTarget,    actual: actualMike,    editable: true,  color: 'var(--champagne)' },
-            { key: 'tony', label: 'Tony',        target: tonyTarget,    actual: actualTony,    editable: false, color: 'var(--dusty-rose)' },
-          ].map(({ key, label, target, actual, editable, color }) => {
+            { key: 'jn',   label: 'Jeff & Nat', target: jeffNatTarget, actual: actualJeffNat, color: 'var(--sage)' },
+            { key: 'mike', label: 'Mike',        target: mikeTarget,    actual: actualMike,    color: 'var(--champagne)' },
+          ].map(({ key, label, target, actual, color }) => {
             const pct = target > 0 ? Math.min(100, (actual / target) * 100) : 0;
             return (
               <div key={key} style={{ background: 'var(--cream)', borderRadius: '10px', padding: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                   <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color }}>{label}</span>
-                  {editable ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--mid-gray)', fontFamily: 'Jost' }}>€</span>
-                      <input
-                        type="number" min="0" step="1000"
-                        value={key === 'jn' ? jeffNatTarget : mikeTarget}
-                        onChange={e => {
-                          const v = parseInt(e.target.value) || 0;
-                          if (key === 'jn') { setJNTarget(v); persistSettings({ jeffNatTarget: v }); }
-                          else              { setMikeTarget(v); persistSettings({ mikeTarget: v }); }
-                        }}
-                        style={{ ...miniInput, width: 80, textAlign: 'right' }}
-                      />
-                    </div>
-                  ) : (
-                    <span className="font-sans-clean" style={{ fontSize: '0.78rem', color: 'var(--mid-gray)' }}>
-                      {hideAmounts ? '••••••' : fmt(target)} <span style={{ fontSize: '0.6rem' }}>(auto)</span>
-                    </span>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--mid-gray)', fontFamily: 'Jost' }}>€</span>
+                    <input
+                      type="number" min="0" step="1000"
+                      value={key === 'jn' ? jeffNatTarget : mikeTarget}
+                      onChange={e => {
+                        const v = parseInt(e.target.value) || 0;
+                        if (key === 'jn') { setJNTarget(v); persistSettings({ jeffNatTarget: v }); }
+                        else              { setMikeTarget(v); persistSettings({ mikeTarget: v }); }
+                      }}
+                      style={{ ...miniInput, width: 80, textAlign: 'right' }}
+                    />
+                  </div>
                 </div>
                 <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.15rem' }}>{mask(actual)}</div>
                 <div className="font-sans-clean" style={{ fontSize: '0.68rem', color: 'var(--mid-gray)' }}>
@@ -278,6 +289,29 @@ export default function BudgetTab() {
               </div>
             );
           })}
+
+          {/* Tony — auto (remainder after Jeff/Nat + Mike targets + Other paid) */}
+          {(() => {
+            const pct = tonyTarget > 0 ? Math.min(100, (actualTony / tonyTarget) * 100) : 0;
+            return (
+              <div style={{ background: 'var(--cream)', borderRadius: '10px', padding: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--dusty-rose)' }}>Tony</span>
+                  <span className="font-sans-clean" style={{ fontSize: '0.78rem', color: 'var(--mid-gray)' }}>
+                    {hideAmounts ? '••••••' : fmt(tonyTarget)} <span style={{ fontSize: '0.6rem' }}>(auto)</span>
+                  </span>
+                </div>
+                <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.15rem' }}>{mask(actualTony)}</div>
+                <div className="font-sans-clean" style={{ fontSize: '0.68rem', color: 'var(--mid-gray)' }}>
+                  paid · {mask(Math.max(0, tonyTarget - actualTony))} remaining
+                </div>
+                <div style={{ marginTop: '0.5rem', height: '4px', background: 'var(--light-gray)', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: 'var(--dusty-rose)', borderRadius: '2px', transition: 'width 0.5s' }} />
+                </div>
+              </div>
+            );
+          })()}
+
         </div>
       </div>
 
