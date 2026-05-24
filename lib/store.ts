@@ -2,7 +2,7 @@
 import { BudgetItem, Guest, ChecklistItem, TorontoBudgetItem, TorontoChecklistItem, VillaRoom, TorontoGuest, BudgetSettings } from './types';
 
 const DEFAULT_BUDGET_SETTINGS: BudgetSettings = { mainGuestCount: 106, poolGuestCount: 60, jeffNatTarget: 18000, mikeTarget: 10000 };
-import { GUEST_SEED, BUDGET_SEED, VILLA_SEED } from './seedData';
+import { GUEST_SEED, BUDGET_SEED, VILLA_SEED, CHECKLIST_SEED } from './seedData';
 import { supabase } from './supabase';
 
 // ── Local storage helpers ─────────────────────────────────────────────────────
@@ -78,14 +78,15 @@ export async function syncGuests(current: Guest[]): Promise<Guest[]> {
 }
 
 // ── Checklist ─────────────────────────────────────────────────────────────────
+// key: checklist_v2 — v2 uses CHECKLIST_SEED default (v1 key stored empty [])
 
-export function getChecklist(): ChecklistItem[] { return getLS('checklist', []); }
+export function getChecklist(): ChecklistItem[] { return getLS('checklist_v2', CHECKLIST_SEED); }
 export function saveChecklist(items: ChecklistItem[]) {
-  saveLS('checklist', items);
-  sbPush('checklist', items);
+  saveLS('checklist_v2', items);
+  sbPush('checklist_v2', items);
 }
 export async function syncChecklist(current: ChecklistItem[]): Promise<ChecklistItem[]> {
-  return sbSync('checklist', current);
+  return sbSync('checklist_v2', current);
 }
 
 // ── Toronto Budget ────────────────────────────────────────────────────────────

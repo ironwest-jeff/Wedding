@@ -1,4 +1,4 @@
-import { Guest, GuestSide, BudgetItem, WeddingDay, Payer, PayStatus, VillaRoom, VillaLocation } from './types';
+import { Guest, GuestSide, BudgetItem, WeddingDay, Payer, PayStatus, VillaRoom, VillaLocation, ChecklistItem, ChecklistCategory, ChecklistPriority } from './types';
 
 
 let _id = 1;
@@ -295,4 +295,96 @@ export const VILLA_SEED: VillaRoom[] = [
   villaRoom('2 Bedroom Suite', 'Second Villa', '2 Bedroom Suite', 'Carol & Malda | Taleen & Joseph', 4, 2496.88, 'Paid', true, 'Upper floor, 2 king beds, living room w/ fireplace, kitchenette — included in venue cost'),
   villaRoom('3 Bedroom Suite A', 'Second Villa', '3 Bedroom Suite', 'Mike, Sue, Amanda, Trevor, Ellis', 5, 2745.42, 'Pending', false, 'Ground floor, 3 bedrooms, living room, private patio'),
   villaRoom('3 Bedroom Suite B', 'Second Villa', '3 Bedroom Suite', 'Gabi, Sam, Reina, Francis, Elly, Bassel, Kirsten', 7, 3745.42, 'Pending', false, 'Ground floor, 3 bedrooms, living room, private patio'),
+];
+
+// ── Main Wedding Checklist seed ───────────────────────────────────────────────
+
+function cl(
+  task: string,
+  category: ChecklistCategory,
+  priority: ChecklistPriority,
+  done: boolean,
+  dueDate?: string,
+  notes?: string,
+): ChecklistItem {
+  return { id: uid(), task, category, priority, done, dueDate, notes };
+}
+
+export const CHECKLIST_SEED: ChecklistItem[] = [
+  // ── Venue ──
+  cl('Pay and sign for venue',                  'Venue',        'High',   true,  '2025-06-20'),
+  cl('Toronto church booked',                   'Venue',        'High',   true),
+
+  // ── Catering ──
+  cl('Toronto wedding dinner booked',           'Catering',     'High',   true),
+  cl('Final day dinner location confirmed',     'Catering',     'High',   true),
+  cl('Late night food arranged',                'Catering',     'Medium', true),
+
+  // ── Music ──
+  cl('DJ (wedding day)',                        'Music',        'High',   true),
+  cl('DJ (welcome party)',                      'Music',        'High',   true),
+  cl('Zaffe dancers',                           'Music',        'High',   true),
+  cl('First dance song',                        'Music',        'High',   true),
+  cl('Father & bride song',                     'Music',        'High',   true),
+  cl('Mother & groom song',                     'Music',        'High',   true),
+  cl('Groom ceremony entrance song',            'Music',        'High',   true),
+  cl('Bride ceremony entrance song',            'Music',        'High',   true),
+  cl('Ceremony exit song',                      'Music',        'High',   true),
+  cl('Music playlist for wedding day',          'Music',        'Medium', true),
+  cl('Music playlist for welcome party',        'Music',        'Medium', false),
+
+  // ── Flowers ──
+  cl('Decorations & florals',                   'Flowers',      'High',   false),
+
+  // ── Attire ──
+  cl('Wedding dress',                           'Attire',       'High',   true),
+  cl('Wedding veil',                            'Attire',       'High',   true),
+  cl('Wedding shoes',                           'Attire',       'High',   true),
+  cl("Nat's welcome party dress",               'Attire',       'High',   false),
+  cl("Nat's getting ready dress",               'Attire',       'Medium', true),
+  cl('Bridesmaid dresses',                      'Attire',       'High',   true),
+  cl('Hair & makeup artist booked',             'Attire',       'High',   true),
+  cl('Jewellery for wedding day',               'Attire',       'Medium', false),
+  cl('Jewellery for welcome party',             'Attire',       'Low',    false),
+  cl('Groom suit',                              'Attire',       'High',   false),
+  cl('Groom shoes',                             'Attire',       'Medium', false),
+  cl('Groom welcome party outfit',              'Attire',       'Medium', false),
+  cl('Groom Toronto outfit',                    'Attire',       'Medium', false),
+  cl('Groomsmen suits',                         'Attire',       'High',   false),
+  cl("Richard's outfit",                        'Attire',       'Medium', false),
+
+  // ── Photography ──
+  cl('Book photographer',                       'Photography',  'High',   true),
+  cl('Videographer',                            'Photography',  'High',   true),
+  cl('Wedding day photography shot list',       'Photography',  'High',   false),
+
+  // ── Logistics ──
+  cl('Hotel room block',                        'Logistics',    'High',   true),
+  cl('Book flights',                            'Logistics',    'High',   true),
+  cl('Book hotels',                             'Logistics',    'High',   false),
+  cl('Transportation',                          'Logistics',    'High',   false),
+  cl('Wedding day fireworks',                   'Logistics',    'Medium', true),
+  cl('Welcome bags',                            'Logistics',    'High',   false),
+  cl('Reserved seating for immediate family',   'Logistics',    'Medium', true),
+  cl('Request guest hotel details',             'Logistics',    'Medium', true),
+  cl('Seating chart',                           'Logistics',    'High',   false),
+  cl('Bridal party proposal',                   'Logistics',    'Medium', true),
+
+  // ── Invitations ──
+  cl('Send save the dates',                     'Invitations',  'High',   true,  '2025-07-30'),
+  cl('Invitations sent',                        'Invitations',  'High',   true,  '2025-12-31'),
+  cl('Wedding website',                         'Invitations',  'Medium', true,  '2025-12-31'),
+  cl('Stationery',                              'Invitations',  'High',   false),
+  cl('Menu stationery',                         'Invitations',  'Medium', true),
+
+  // ── Legal ──
+  cl('Marriage license',                        'Legal',        'High',   true),
+  cl('Officiant details confirmed',             'Legal',        'High',   false),
+
+  // ── Other ──
+  cl('Vows written',                            'Other',        'High',   false),
+  cl('Buy wedding rings',                       'Other',        'High',   true),
+  cl('Wedding ceremony guest book',             'Other',        'Medium', false),
+  cl('Matches / matchbooks',                    'Other',        'Medium', false),
+  cl('Wedding course',                          'Other',        'Low',    false),
 ];
