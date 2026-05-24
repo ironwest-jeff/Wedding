@@ -392,6 +392,33 @@ export default function BudgetTab() {
 
               {form.isVariable ? (
                 <>
+                  {/* Guest type selector — shown first and prominently */}
+                  <div style={{ gridColumn: '1/-1' }}>
+                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.5rem' }}>Based on which guest count?</label>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      {([
+                        { value: 'main' as const, label: '🎊 Wedding Day', sub: `${mainGuestCount} guests` },
+                        { value: 'pool' as const, label: '🏊 Pool Day',    sub: `${poolGuestCount} guests` },
+                      ]).map(opt => {
+                        const sel = (form.variableGuestType ?? 'main') === opt.value;
+                        return (
+                          <button key={opt.value} type="button"
+                            onClick={() => setForm(f => ({ ...f, variableGuestType: opt.value }))}
+                            style={{
+                              flex: 1, padding: '0.7rem 1rem', borderRadius: '10px', cursor: 'pointer',
+                              border: `2px solid ${sel ? 'var(--charcoal)' : 'var(--light-gray)'}`,
+                              background: sel ? 'var(--charcoal)' : 'white',
+                              color: sel ? 'white' : 'var(--charcoal)',
+                              textAlign: 'center', fontFamily: 'Jost',
+                              transition: 'all 0.15s',
+                            }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{opt.label}</div>
+                            <div style={{ fontSize: '0.7rem', opacity: 0.75, marginTop: '0.15rem' }}>{opt.sub}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div>
                     <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Per-person Rate (€) *</label>
                     <input style={inputStyle} type="number" min="0" step="0.01"
@@ -405,15 +432,6 @@ export default function BudgetTab() {
                       value={form.variableTaxRate ?? ''}
                       onChange={e => setForm(f => ({ ...f, variableTaxRate: parseFloat(e.target.value) || undefined }))}
                       placeholder="e.g. 10" />
-                  </div>
-                  <div style={{ gridColumn: '1/-1' }}>
-                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Guest Pool</label>
-                    <select style={{ ...inputStyle, width: 'auto' }}
-                      value={form.variableGuestType ?? 'main'}
-                      onChange={e => setForm(f => ({ ...f, variableGuestType: e.target.value as 'main' | 'pool' }))}>
-                      <option value="main">Main — Welcome + Wedding ({mainGuestCount} guests)</option>
-                      <option value="pool">Pool Party ({poolGuestCount} guests)</option>
-                    </select>
                   </div>
                   {formIsVar && (
                     <div style={{ gridColumn: '1/-1', background: '#F0FFF4', border: '1px solid #C6F6D5', borderRadius: 8, padding: '0.6rem 0.85rem', fontSize: '0.78rem', fontFamily: 'Jost' }}>

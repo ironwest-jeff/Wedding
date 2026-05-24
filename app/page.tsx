@@ -176,14 +176,12 @@ export default function Home() {
 
       {/* Content */}
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
-        <div className="animate-in">
-          {activeTab === 'budget' && <BudgetTab />}
-          {activeTab === 'guests' && <GuestListTab />}
-          {activeTab === 'checklist' && <ChecklistTab />}
-          {activeTab === 'villa' && <VillaTab />}
-          {activeTab === 'seating' && <SeatingTab />}
-          {activeTab === 'toronto' && <TorontoTab />}
-        </div>
+        {activeTab === 'budget' && <BudgetTab />}
+        {activeTab === 'guests' && <GuestListTab />}
+        {activeTab === 'checklist' && <ChecklistTab />}
+        {activeTab === 'villa' && <VillaTab />}
+        {activeTab === 'seating' && <SeatingTab />}
+        {activeTab === 'toronto' && <TorontoTab />}
       </main>
     </div>
   );
