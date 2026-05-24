@@ -1,79 +1,109 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getTorontoBudget, saveTorontoBudget, getTorontoChecklist, saveTorontoChecklist, syncTorontoBudget, syncTorontoChecklist } from '@/lib/store';
-import { TorontoBudgetItem, TorontoChecklistItem, PayStatus, ChecklistPriority } from '@/lib/types';
+import {
+  getTorontoBudget, saveTorontoBudget,
+  getTorontoChecklist, saveTorontoChecklist,
+  getTorontoGuests, saveTorontoGuests,
+  syncTorontoBudget, syncTorontoChecklist, syncTorontoGuests,
+} from '@/lib/store';
+import { TorontoBudgetItem, TorontoChecklistItem, TorontoGuest, PayStatus, ChecklistPriority } from '@/lib/types';
 
-const CATEGORIES = ['Church', 'Dinner Venue', 'Catering', 'Photography', 'Flowers & Decor', 'Attire', 'Music', 'Transportation', 'Invitations', 'Other'];
-const PAYERS = ['Us', "Jeff's Dad", "FIL's Dad", 'Shared'];
+const CATEGORIES   = ['Church', 'Dinner Venue', 'Catering', 'Photography', 'Flowers & Decor', 'Attire', 'Music', 'Transportation', 'Invitations', 'Other'];
+const PAYERS       = ['Us', "Jeff's Dad", "Nat's Dad", 'Shared'];
 const STATUSES: PayStatus[] = ['Pending', 'Deposit Paid', 'Paid'];
 const PRIORITIES: ChecklistPriority[] = ['High', 'Medium', 'Low'];
 const CHECKLIST_CATS = ['Venue', 'Catering', 'Attire', 'Photography', 'Logistics', 'Invitations', 'Legal', 'Other'];
+const DIETARY_OPTS = ['None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Nut Allergy', 'Dairy-Free', 'Other'] as const;
+const RSVP_OPTS    = ['Confirmed', 'Pending', 'Declined'] as const;
+const SIDE_OPTS    = ['J', 'N', 'Both'] as const;
 
 const STATUS_STYLE: Record<PayStatus, { bg: string; color: string }> = {
-  'Paid': { bg: '#D4EDDA', color: '#276237' },
-  'Pending': { bg: '#FFF3CD', color: '#856404' },
+  'Paid':         { bg: '#D4EDDA', color: '#276237' },
+  'Pending':      { bg: '#FFF3CD', color: '#856404' },
   'Deposit Paid': { bg: '#D1ECF1', color: '#0C5460' },
 };
-
 const PRIORITY_STYLE: Record<ChecklistPriority, { bg: string; color: string }> = {
-  'High': { bg: '#F8D7DA', color: '#721C24' },
+  'High':   { bg: '#F8D7DA', color: '#721C24' },
   'Medium': { bg: '#FFF3CD', color: '#856404' },
-  'Low': { bg: '#D4EDDA', color: '#276237' },
+  'Low':    { bg: '#D4EDDA', color: '#276237' },
 };
+const RSVP_STYLE: Record<string, { bg: string; color: string }> = {
+  'Confirmed': { bg: '#D4EDDA', color: '#276237' },
+  'Pending':   { bg: '#FFF3CD', color: '#856404' },
+  'Declined':  { bg: '#F8D7DA', color: '#721C24' },
+};
+const SIDE_BG: Record<string, string> = { J: '#D6E8F5', N: '#F5D6E8', Both: '#D6F5DC' };
+const SIDE_BD: Record<string, string> = { J: '#90B8D8', N: '#D890B8', Both: '#90D8A8' };
 
-function genId() { return Math.random().toString(36).slice(2, 10); }
+function genId()  { return Math.random().toString(36).slice(2, 10); }
 function fmt(n: number) { return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n); }
 
 const EMPTY_BUDGET: Omit<TorontoBudgetItem, 'id'> = { category: 'Church', description: '', vendor: '', totalAmount: 0, paidBy: 'Us', status: 'Pending', notes: '' };
-const EMPTY_TASK: Omit<TorontoChecklistItem, 'id'> = { task: '', category: 'Logistics', priority: 'Medium', done: false, dueDate: '', notes: '' };
+const EMPTY_TASK:   Omit<TorontoChecklistItem, 'id'> = { task: '', category: 'Logistics', priority: 'Medium', done: false, dueDate: '', notes: '' };
+const EMPTY_GUEST:  Omit<TorontoGuest, 'id'> = { firstName: '', lastName: '', email: '', rsvp: 'Pending', dietary: 'None', dietaryNotes: '', side: 'N', notes: '' };
 
 export default function TorontoTab() {
   const [budgetItems, setBudgetItems] = useState<TorontoBudgetItem[]>([]);
-  const [checklist, setChecklist] = useState<TorontoChecklistItem[]>([]);
-  const [view, setView] = useState<'budget' | 'checklist'>('budget');
+  const [checklist,   setChecklist]   = useState<TorontoChecklistItem[]>([]);
+  const [guests,      setGuests]      = useState<TorontoGuest[]>([]);
+  const [view, setView]               = useState<'guests' | 'budget' | 'checklist'>('guests');
+
   const [showBudgetForm, setShowBudgetForm] = useState(false);
-  const [showTaskForm, setShowTaskForm] = useState(false);
-  const [editingBudget, setEditingBudget] = useState<TorontoBudgetItem | null>(null);
-  const [editingTask, setEditingTask] = useState<TorontoChecklistItem | null>(null);
-  const [budgetForm, setBudgetForm] = useState<Omit<TorontoBudgetItem, 'id'>>(EMPTY_BUDGET);
-  const [taskForm, setTaskForm] = useState<Omit<TorontoChecklistItem, 'id'>>(EMPTY_TASK);
+  const [editingBudget,  setEditingBudget]  = useState<TorontoBudgetItem | null>(null);
+  const [budgetForm,     setBudgetForm]     = useState<Omit<TorontoBudgetItem, 'id'>>(EMPTY_BUDGET);
+
+  const [showTaskForm,   setShowTaskForm]   = useState(false);
+  const [editingTask,    setEditingTask]    = useState<TorontoChecklistItem | null>(null);
+  const [taskForm,       setTaskForm]       = useState<Omit<TorontoChecklistItem, 'id'>>(EMPTY_TASK);
+
+  const [showGuestForm,  setShowGuestForm]  = useState(false);
+  const [editingGuest,   setEditingGuest]   = useState<TorontoGuest | null>(null);
+  const [guestForm,      setGuestForm]      = useState<Omit<TorontoGuest, 'id'>>(EMPTY_GUEST);
+  const [guestSearch,    setGuestSearch]    = useState('');
 
   useEffect(() => {
-    const localBudget = getTorontoBudget();
-    const localCheck = getTorontoChecklist();
-    setBudgetItems(localBudget);
-    setChecklist(localCheck);
-    syncTorontoBudget(localBudget).then(fresh => setBudgetItems(fresh));
-    syncTorontoChecklist(localCheck).then(fresh => setChecklist(fresh));
+    const lb = getTorontoBudget(); const lc = getTorontoChecklist(); const lg = getTorontoGuests();
+    setBudgetItems(lb); setChecklist(lc); setGuests(lg);
+    syncTorontoBudget(lb).then(f => setBudgetItems(f));
+    syncTorontoChecklist(lc).then(f => setChecklist(f));
+    syncTorontoGuests(lg).then(f => setGuests(f));
   }, []);
 
-  function saveBudget(updated: TorontoBudgetItem[]) { setBudgetItems(updated); saveTorontoBudget(updated); }
-  function saveCheck(updated: TorontoChecklistItem[]) { setChecklist(updated); saveTorontoChecklist(updated); }
+  function saveBudget(u: TorontoBudgetItem[]) { setBudgetItems(u); saveTorontoBudget(u); }
+  function saveCheck(u: TorontoChecklistItem[]) { setChecklist(u); saveTorontoChecklist(u); }
+  function saveGuests(u: TorontoGuest[]) { setGuests(u); saveTorontoGuests(u); }
 
   function submitBudget() {
     if (!budgetForm.description || budgetForm.totalAmount <= 0) return;
-    if (editingBudget) {
-      saveBudget(budgetItems.map(i => i.id === editingBudget.id ? { ...budgetForm, id: editingBudget.id } : i));
-    } else {
-      saveBudget([...budgetItems, { ...budgetForm, id: genId() }]);
-    }
+    if (editingBudget) saveBudget(budgetItems.map(i => i.id === editingBudget.id ? { ...budgetForm, id: editingBudget.id } : i));
+    else saveBudget([...budgetItems, { ...budgetForm, id: genId() }]);
     setBudgetForm(EMPTY_BUDGET); setEditingBudget(null); setShowBudgetForm(false);
   }
 
   function submitTask() {
     if (!taskForm.task) return;
-    if (editingTask) {
-      saveCheck(checklist.map(i => i.id === editingTask.id ? { ...taskForm, id: editingTask.id } : i));
-    } else {
-      saveCheck([...checklist, { ...taskForm, id: genId() }]);
-    }
+    if (editingTask) saveCheck(checklist.map(i => i.id === editingTask.id ? { ...taskForm, id: editingTask.id } : i));
+    else saveCheck([...checklist, { ...taskForm, id: genId() }]);
     setTaskForm(EMPTY_TASK); setEditingTask(null); setShowTaskForm(false);
   }
 
-  const totalBudget = budgetItems.reduce((s, i) => s + i.totalAmount, 0);
-  const paid = budgetItems.filter(i => i.status === 'Paid').reduce((s, i) => s + i.totalAmount, 0);
-  const doneTasks = checklist.filter(i => i.done).length;
-  const pct = checklist.length > 0 ? Math.round((doneTasks / checklist.length) * 100) : 0;
+  function submitGuest() {
+    if (!guestForm.firstName) return;
+    if (editingGuest) saveGuests(guests.map(g => g.id === editingGuest.id ? { ...guestForm, id: editingGuest.id } : g));
+    else saveGuests([...guests, { ...guestForm, id: genId() }]);
+    setGuestForm(EMPTY_GUEST); setEditingGuest(null); setShowGuestForm(false);
+  }
+
+  const totalBudget  = budgetItems.reduce((s, i) => s + i.totalAmount, 0);
+  const paidBudget   = budgetItems.filter(i => i.status === 'Paid').reduce((s, i) => s + i.totalAmount, 0);
+  const doneTasks    = checklist.filter(i => i.done).length;
+  const pct          = checklist.length > 0 ? Math.round((doneTasks / checklist.length) * 100) : 0;
+  const confirmedG   = guests.filter(g => g.rsvp === 'Confirmed').length;
+  const pendingG     = guests.filter(g => g.rsvp === 'Pending').length;
+
+  const filteredGuests = guests.filter(g =>
+    `${g.firstName} ${g.lastName}`.toLowerCase().includes(guestSearch.toLowerCase())
+  );
 
   const card = { background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid var(--light-gray)' };
   const inputStyle: React.CSSProperties = { width: '100%', padding: '0.6rem 0.8rem', border: '1px solid var(--light-gray)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'Jost, sans-serif', background: 'var(--warm-white)', color: 'var(--charcoal)', outline: 'none' };
@@ -86,41 +116,189 @@ export default function TorontoTab() {
           <div>
             <p className="font-sans-clean" style={{ fontSize: '0.65rem', letterSpacing: '0.3em', textTransform: 'uppercase', color: 'var(--champagne)', marginBottom: '0.3rem' }}>⛪ Toronto Wedding</p>
             <h2 className="font-display" style={{ fontSize: '1.8rem', fontWeight: 300 }}>Church Ceremony <span style={{ fontStyle: 'italic', color: 'var(--blush)' }}>& Dinner</span></h2>
-            <p className="font-sans-clean" style={{ fontSize: '0.78rem', color: 'var(--mid-gray)', marginTop: '0.3rem' }}>~32 guests · Church followed by dinner</p>
+            <p className="font-sans-clean" style={{ fontSize: '0.78rem', color: 'var(--mid-gray)', marginTop: '0.3rem' }}>
+              {guests.length} guests · {confirmedG} confirmed · Church followed by dinner
+            </p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div className="font-display" style={{ fontSize: '2rem', color: 'var(--champagne)' }}>{fmt(totalBudget)}</div>
-            <p className="font-sans-clean" style={{ fontSize: '0.7rem', color: 'var(--mid-gray)' }}>{fmt(paid)} paid · {fmt(totalBudget - paid)} remaining</p>
+            <p className="font-sans-clean" style={{ fontSize: '0.7rem', color: 'var(--mid-gray)' }}>{fmt(paidBudget)} paid · {fmt(totalBudget - paidBudget)} remaining</p>
           </div>
         </div>
       </div>
 
       {/* Sub-nav */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        {(['budget', 'checklist'] as const).map(v => (
+        {(['guests', 'budget', 'checklist'] as const).map(v => (
           <button key={v} onClick={() => setView(v)} style={{
             padding: '0.6rem 1.25rem', border: '1px solid var(--light-gray)', borderRadius: '8px', cursor: 'pointer',
             background: view === v ? 'var(--charcoal)' : 'white', color: view === v ? 'white' : 'var(--charcoal)',
             fontFamily: 'Jost', fontSize: '0.78rem', letterSpacing: '0.1em', textTransform: 'capitalize',
-          }}>{v === 'budget' ? '💰 Budget' : '✓ Checklist'}</button>
+          }}>
+            {v === 'guests' ? `👥 Guests (${guests.length})` : v === 'budget' ? '💰 Budget' : '✓ Checklist'}
+          </button>
         ))}
       </div>
 
+      {/* ── GUESTS TAB ── */}
+      {view === 'guests' && (
+        <>
+          {/* Stats + add button */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {[
+                { label: 'Total',     value: guests.length,    color: 'var(--charcoal)' },
+                { label: 'Confirmed', value: confirmedG,       color: '#276237' },
+                { label: 'Pending',   value: pendingG,         color: '#856404' },
+                { label: 'Declined',  value: guests.filter(g => g.rsvp === 'Declined').length, color: '#721C24' },
+              ].map(s => (
+                <div key={s.label} style={{ ...card, padding: '0.75rem 1rem', minWidth: 80 }}>
+                  <p className="font-sans-clean" style={{ fontSize: '0.6rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--mid-gray)' }}>{s.label}</p>
+                  <p className="font-display" style={{ fontSize: '1.4rem', color: s.color }}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => { setGuestForm(EMPTY_GUEST); setEditingGuest(null); setShowGuestForm(true); }}
+              style={{ padding: '0.65rem 1.25rem', background: 'var(--charcoal)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              + Add Guest
+            </button>
+          </div>
+
+          {/* Search */}
+          <input type="text" value={guestSearch} onChange={e => setGuestSearch(e.target.value)}
+            placeholder="Search guests…"
+            style={{ ...inputStyle, marginBottom: '1rem' }} />
+
+          {/* Guest form modal */}
+          {showGuestForm && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '2rem 1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+              <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '100%', maxWidth: '500px', margin: 'auto', flexShrink: 0 }}>
+                <h2 className="font-display" style={{ fontSize: '1.4rem', marginBottom: '1.25rem', fontWeight: 400 }}>
+                  {editingGuest ? 'Edit Guest' : 'Add Toronto Guest'}
+                </h2>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>First Name *</label>
+                    <input style={inputStyle} value={guestForm.firstName} onChange={e => setGuestForm(f => ({ ...f, firstName: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Last Name</label>
+                    <input style={inputStyle} value={guestForm.lastName} onChange={e => setGuestForm(f => ({ ...f, lastName: e.target.value }))} />
+                  </div>
+                  <div style={{ gridColumn: '1/-1' }}>
+                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Email</label>
+                    <input style={inputStyle} type="email" value={guestForm.email} onChange={e => setGuestForm(f => ({ ...f, email: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>RSVP</label>
+                    <select style={inputStyle} value={guestForm.rsvp} onChange={e => setGuestForm(f => ({ ...f, rsvp: e.target.value as TorontoGuest['rsvp'] }))}>
+                      {RSVP_OPTS.map(r => <option key={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Side</label>
+                    <select style={inputStyle} value={guestForm.side} onChange={e => setGuestForm(f => ({ ...f, side: e.target.value as TorontoGuest['side'] }))}>
+                      <option value="J">Jeff's Side</option>
+                      <option value="N">Nat's Side</option>
+                      <option value="Both">Both</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Dietary</label>
+                    <select style={inputStyle} value={guestForm.dietary} onChange={e => setGuestForm(f => ({ ...f, dietary: e.target.value as TorontoGuest['dietary'] }))}>
+                      {DIETARY_OPTS.map(d => <option key={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Dietary Notes</label>
+                    <input style={inputStyle} value={guestForm.dietaryNotes} onChange={e => setGuestForm(f => ({ ...f, dietaryNotes: e.target.value }))} />
+                  </div>
+                  <div style={{ gridColumn: '1/-1' }}>
+                    <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Notes</label>
+                    <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: '56px' }} value={guestForm.notes} onChange={e => setGuestForm(f => ({ ...f, notes: e.target.value }))} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setShowGuestForm(false); setEditingGuest(null); }}
+                    style={{ padding: '0.65rem 1.25rem', background: 'var(--light-gray)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.8rem' }}>Cancel</button>
+                  <button onClick={submitGuest}
+                    style={{ padding: '0.65rem 1.25rem', background: 'var(--charcoal)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.8rem' }}>Save</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Guest list */}
+          {filteredGuests.length === 0 ? (
+            <div style={{ ...card, textAlign: 'center', padding: '2.5rem' }}>
+              <p className="font-display" style={{ color: 'var(--mid-gray)', fontStyle: 'italic' }}>
+                {guests.length === 0 ? 'No guests yet — add your Toronto wedding guests' : 'No matches'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+              {filteredGuests.map((g, idx) => (
+                <div key={g.id} style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.7rem 1.25rem',
+                  borderBottom: idx < filteredGuests.length - 1 ? '1px solid var(--light-gray)' : 'none',
+                  background: idx % 2 === 0 ? 'white' : 'var(--warm-white)',
+                }}>
+                  {/* Side dot */}
+                  <span style={{
+                    width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                    background: SIDE_BG[g.side], border: `1px solid ${SIDE_BD[g.side]}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.52rem', fontFamily: 'Jost', fontWeight: 600, color: '#333',
+                  }}>{g.side}</span>
+
+                  {/* Name + email */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Jost', fontSize: '0.9rem', fontWeight: 500 }}>{g.firstName} {g.lastName}</div>
+                    {g.email && <div style={{ fontSize: '0.7rem', color: 'var(--mid-gray)', fontFamily: 'Jost' }}>{g.email}</div>}
+                  </div>
+
+                  {/* Badges */}
+                  <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <span style={{ ...RSVP_STYLE[g.rsvp], borderRadius: 4, padding: '0.15rem 0.5rem', fontSize: '0.62rem', fontFamily: 'Jost' }}>{g.rsvp}</span>
+                    {g.dietary !== 'None' && (
+                      <span style={{ background: '#E8F4FD', color: '#1a6fa0', borderRadius: 4, padding: '0.15rem 0.5rem', fontSize: '0.62rem', fontFamily: 'Jost' }}>{g.dietary}</span>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
+                    <button onClick={() => { setEditingGuest(g); setGuestForm({ ...g }); setShowGuestForm(true); }}
+                      style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--light-gray)', borderRadius: '5px', cursor: 'pointer', background: 'white', fontSize: '0.65rem' }}>✎</button>
+                    <button onClick={() => { if (confirm('Remove guest?')) saveGuests(guests.filter(x => x.id !== g.id)); }}
+                      style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--light-gray)', borderRadius: '5px', cursor: 'pointer', background: 'white', color: 'var(--dusty-rose)', fontSize: '0.65rem' }}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── BUDGET TAB ── */}
       {view === 'budget' && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, auto)', gap: '0.75rem' }}>
-              {[{ label: 'Total', val: fmt(totalBudget), color: 'var(--charcoal)' }, { label: 'Paid', val: fmt(paid), color: 'var(--deep-sage)' }, { label: 'Remaining', val: fmt(totalBudget - paid), color: 'var(--dusty-rose)' }].map(s => (
+              {[
+                { label: 'Total',     val: fmt(totalBudget),           color: 'var(--charcoal)' },
+                { label: 'Paid',      val: fmt(paidBudget),            color: 'var(--deep-sage)' },
+                { label: 'Remaining', val: fmt(totalBudget - paidBudget), color: 'var(--dusty-rose)' },
+              ].map(s => (
                 <div key={s.label} style={{ ...card, padding: '0.75rem 1rem' }}>
                   <p className="font-sans-clean" style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--mid-gray)' }}>{s.label}</p>
                   <p className="font-display" style={{ fontSize: '1.2rem', color: s.color }}>{s.val}</p>
                 </div>
               ))}
             </div>
-            <button onClick={() => { setBudgetForm(EMPTY_BUDGET); setEditingBudget(null); setShowBudgetForm(true); }} style={{ padding: '0.65rem 1.25rem', background: 'var(--charcoal)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>+ Add Item</button>
+            <button onClick={() => { setBudgetForm(EMPTY_BUDGET); setEditingBudget(null); setShowBudgetForm(true); }}
+              style={{ padding: '0.65rem 1.25rem', background: 'var(--charcoal)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>+ Add Item</button>
           </div>
 
-          {/* Budget Form Modal */}
           {showBudgetForm && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '2rem 1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
               <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '100%', maxWidth: '480px', margin: 'auto', flexShrink: 0 }}>
@@ -214,12 +392,14 @@ export default function TorontoTab() {
         </>
       )}
 
+      {/* ── CHECKLIST TAB ── */}
       {view === 'checklist' && (
         <>
           <div style={{ ...card, marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
               <span className="font-sans-clean" style={{ fontSize: '0.75rem', color: 'var(--mid-gray)' }}>{doneTasks} / {checklist.length} tasks complete</span>
-              <button onClick={() => { setTaskForm(EMPTY_TASK); setEditingTask(null); setShowTaskForm(true); }} style={{ padding: '0.5rem 1.25rem', background: 'var(--charcoal)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>+ Add Task</button>
+              <button onClick={() => { setTaskForm(EMPTY_TASK); setEditingTask(null); setShowTaskForm(true); }}
+                style={{ padding: '0.5rem 1.25rem', background: 'var(--charcoal)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>+ Add Task</button>
             </div>
             <div style={{ height: '6px', background: 'var(--light-gray)', borderRadius: '3px', overflow: 'hidden' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--sage), var(--champagne))', transition: 'width 0.5s' }} />
@@ -259,7 +439,8 @@ export default function TorontoTab() {
             <div style={card}>
               {checklist.map(item => (
                 <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '0.7rem 0', borderBottom: '1px solid var(--light-gray)' }}>
-                  <button onClick={() => saveCheck(checklist.map(i => i.id === item.id ? { ...i, done: !i.done } : i))} style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.done ? 'var(--deep-sage)' : 'var(--light-gray)'}`, background: item.done ? 'var(--deep-sage)' : 'white', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '1px' }}>
+                  <button onClick={() => saveCheck(checklist.map(i => i.id === item.id ? { ...i, done: !i.done } : i))}
+                    style={{ width: '20px', height: '20px', borderRadius: '50%', border: `2px solid ${item.done ? 'var(--deep-sage)' : 'var(--light-gray)'}`, background: item.done ? 'var(--deep-sage)' : 'white', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '1px' }}>
                     {item.done && <span style={{ color: 'white', fontSize: '0.6rem' }}>✓</span>}
                   </button>
                   <div style={{ flex: 1 }}>

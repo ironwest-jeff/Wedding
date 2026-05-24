@@ -22,8 +22,19 @@ export interface BudgetItem {
   status: PayStatus;
   notes?: string;
   dueDate?: string;
-  payments: Payment[];   // payment history (deposits, partials, cash, etc.)
-  taxRate?: number;      // optional tax %, e.g. 22 for Italy IVA
+  payments: Payment[];          // payment history (deposits, partials, cash, etc.)
+  taxRate?: number;             // optional tax % for non-variable items, e.g. 22 for Italy IVA
+  isVariable?: boolean;         // amount computed from per-person rate × guest count
+  perPersonRate?: number;       // per-person rate in €
+  variableTaxRate?: number;     // tax rate % applied to per-person rate
+  variableGuestType?: 'main' | 'pool'; // which guest count to use
+}
+
+export interface BudgetSettings {
+  mainGuestCount: number;   // default 106
+  poolGuestCount: number;   // default 60
+  jeffNatTarget: number;    // default 18000
+  mikeTarget: number;       // default 10000
 }
 
 export type DietaryRestriction = 'None' | 'Vegetarian' | 'Vegan' | 'Gluten-Free' | 'Kosher' | 'Halal' | 'Nut Allergy' | 'Dairy-Free' | 'Other';
@@ -80,6 +91,19 @@ export interface ChecklistItem {
 }
 
 // Toronto Wedding types
+export interface TorontoGuest {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  rsvp: 'Confirmed' | 'Pending' | 'Declined';
+  dietary: 'None' | 'Vegetarian' | 'Vegan' | 'Gluten-Free' | 'Nut Allergy' | 'Dairy-Free' | 'Other';
+  dietaryNotes?: string;
+  side: 'J' | 'N' | 'Both';
+  notes?: string;
+  group?: string;
+}
+
 export interface TorontoBudgetItem {
   id: string;
   category: string;

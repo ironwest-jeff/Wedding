@@ -3,28 +3,51 @@ import { useState, useEffect } from 'react';
 import { getGuests, syncGuests, getSeating, saveSeating, syncSeating } from '@/lib/store';
 import { Guest } from '@/lib/types';
 
-// ── Horizontal Serpentine — 3 arms, curves on alternating sides ───────────
-const SEAT_W   = 32;   // px
-const SEAT_H   = 26;
-const COL_GAP  = 4;    // gap between seat columns
-const TABLE_H  = 16;   // table strip height
-const SEAT_VG  = 5;    // seat ↔ table vertical gap
-const ARM_COLS = 17;   // seats per side per arm  (3 arms × 2 sides × 17 = 102 total)
-const CURVE_W  = 42;   // horizontal radius of arc connectors
-const ARM_VG   = 52;   // vertical gap between arms
+// ── Vertical Serpentine S — 3 vertical arms ──────────────────────────────────
+// Path: ARM_A (right, top→bottom) → bottom arc (right) → ARM_B (middle, bottom→top)
+//       → top arch (left) → ARM_C (left, top→bottom)
+// Reads: starts top-right, ends bottom-left = letter S
+// ─────────────────────────────────────────────────────────────────────────────
+const SEAT_W    = 30;
+const SEAT_H    = 26;
+const ROW_GAP   = 4;
+const TABLE_W   = 16;
+const SEAT_HG   = 5;
 
-const COL_STEP  = SEAT_W + COL_GAP;                           // 36
-const ARM_PX_W  = ARM_COLS * COL_STEP - COL_GAP;             // 608
-const ARM_H     = SEAT_H * 2 + SEAT_VG * 2 + TABLE_H;        // 78
-const TABLE_TOP = SEAT_H + SEAT_VG;                           // 31  (table strip top within arm)
-const ARM_STEP  = ARM_H + ARM_VG;                             // 130
-const CURVE_H   = ARM_STEP + TABLE_H;                         // 146 (arc div height)
-const CANVAS_W  = CURVE_W + ARM_PX_W + CURVE_W;              // 692
-const CANVAS_H  = ARM_H * 3 + ARM_VG * 2;                    // 338
-const ARM_LEFT  = CURVE_W;                                    // x offset of all arms
+const ARM_ROWS  = 17;
+const ROW_STEP  = SEAT_H + ROW_GAP;                    // 30
+const ARM_PX_H  = ARM_ROWS * ROW_STEP - ROW_GAP;       // 506
+const ARM_W     = SEAT_W * 2 + SEAT_HG * 2 + TABLE_W; // 86
+const TABLE_OX  = SEAT_W + SEAT_HG;                    // 35 (table x-offset within arm)
+const R_SEAT_OX = SEAT_W + SEAT_HG + TABLE_W + SEAT_HG; // 56 (right-seat x-offset)
+
+const ARC_H      = 50;
+const ARC_PAD    = 16;
+const ARM_TOP_Y  = ARC_PAD + ARC_H;                    // 66
+
+const COL_SPACING = 176;
+const ARM_C_X   = 10;
+const ARM_B_X   = ARM_C_X + COL_SPACING;               // 186
+const ARM_A_X   = ARM_B_X + COL_SPACING;               // 362
+
+const CANVAS_W  = ARM_A_X + ARM_W + 10;                // 458
+const CANVAS_H  = ARM_TOP_Y + ARM_PX_H + ARC_H + ARC_PAD; // 638
+const TOTAL_SEATS = ARM_ROWS * 2 * 3;                  // 102
 
 const TABLE_COLOR = '#8B7355';
-const TOTAL_SEATS = ARM_COLS * 2 * 3;                         // 102
+
+// Top arch: C-top ↔ B-top (inverted U — opens downward)
+// Left border = ARM_C table strip; right border = ARM_B table strip right edge
+const ARCH_LEFT  = ARM_C_X + TABLE_OX;                 // 45
+const ARCH_RIGHT = ARM_B_X + TABLE_OX + TABLE_W;       // 237
+const ARCH_WIDTH = ARCH_RIGHT - ARCH_LEFT;              // 192
+const ARCH_TOP   = ARC_PAD;                             // 16
+
+// Bottom arc: B-bottom ↔ A-bottom (U-shape — opens upward)
+const ARC_LEFT   = ARM_B_X + TABLE_OX;                 // 221
+const ARC_RIGHT  = ARM_A_X + TABLE_OX + TABLE_W;       // 413
+const ARC_WIDTH  = ARC_RIGHT - ARC_LEFT;               // 192
+const ARC_TOP    = ARM_TOP_Y + ARM_PX_H;               // 572
 
 type SeatingMap = Record<string, string>;
 const SIDE_BG: Record<string, string> = { J: '#D6E8F5', N: '#F5D6E8', Both: '#D6F5DC' };
@@ -100,20 +123,20 @@ export default function SeatingTab() {
     );
   }
 
-  // Renders seats for one arm. Arm B is reversed (right→left) for serpentine flow.
-  function renderArm(letter: 'A' | 'B' | 'C', armIdx: number) {
-    const armTop  = armIdx * ARM_STEP;
-    const rev     = letter === 'B';
-    return Array.from({ length: ARM_COLS }, (_, col) => {
-      const dc   = rev ? ARM_COLS - 1 - col : col;
-      const xPos = ARM_LEFT + dc * COL_STEP;
+  // ARM_B is reversed (bottom→top) so the serpentine S flows correctly
+  function renderArm(letter: 'A' | 'B' | 'C') {
+    const armX = letter === 'A' ? ARM_A_X : letter === 'B' ? ARM_B_X : ARM_C_X;
+    const rev  = letter === 'B';
+    return Array.from({ length: ARM_ROWS }, (_, row) => {
+      const displayRow = rev ? ARM_ROWS - 1 - row : row;
+      const yPos = ARM_TOP_Y + displayRow * ROW_STEP;
       return (
-        <div key={`${letter}-${col}`}>
-          <div style={{ position: 'absolute', left: xPos, top: armTop }}>
-            <Seat sid={`${letter}-T-${col}`} />
+        <div key={`${letter}-${row}`}>
+          <div style={{ position: 'absolute', left: armX, top: yPos }}>
+            <Seat sid={`${letter}-L-${row}`} />
           </div>
-          <div style={{ position: 'absolute', left: xPos, top: armTop + TABLE_TOP + TABLE_H + SEAT_VG }}>
-            <Seat sid={`${letter}-B-${col}`} />
+          <div style={{ position: 'absolute', left: armX + R_SEAT_OX, top: yPos }}>
+            <Seat sid={`${letter}-R-${row}`} />
           </div>
         </div>
       );
@@ -130,10 +153,10 @@ export default function SeatingTab() {
       {/* ── Stats ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total Seats',     value: TOTAL_SEATS,              accent: 'var(--charcoal)' },
-          { label: 'Assigned',        value: assignedCount,            accent: 'var(--deep-sage)' },
+          { label: 'Total Seats',     value: TOTAL_SEATS,                accent: 'var(--charcoal)' },
+          { label: 'Assigned',        value: assignedCount,              accent: 'var(--deep-sage)' },
           { label: 'Empty Seats',     value: TOTAL_SEATS - assignedCount, accent: 'var(--dusty-rose)' },
-          { label: 'Unseated Guests', value: unassigned.length,        accent: 'var(--champagne)' },
+          { label: 'Unseated Guests', value: unassigned.length,          accent: 'var(--champagne)' },
         ].map(s => (
           <div key={s.label} style={{ ...card, padding: '1rem' }}>
             <p className="font-sans-clean" style={{ fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.4rem' }}>{s.label}</p>
@@ -149,7 +172,7 @@ export default function SeatingTab() {
           <div>
             <h2 className="font-display" style={{ fontSize: '1.3rem', fontWeight: 400 }}>Serpentine Table</h2>
             <p className="font-sans-clean" style={{ fontSize: '0.7rem', color: 'var(--mid-gray)', marginTop: '0.15rem' }}>
-              {activeSeat ? 'Seat selected — pick a guest in the panel below' : 'Click any seat · then pick a guest below'}
+              {activeSeat ? 'Seat selected — pick a guest below' : 'Click any seat · then pick a guest below'}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -176,48 +199,46 @@ export default function SeatingTab() {
           <div style={{ display: 'flex', justifyContent: 'center', minWidth: CANVAS_W }}>
             <div style={{ position: 'relative', width: CANVAS_W, height: CANVAS_H, flexShrink: 0 }}>
 
-              {/* Table strips */}
-              {([0, 1, 2] as const).map(i => (
-                <div key={i} style={{
-                  position: 'absolute', left: ARM_LEFT,
-                  top: i * ARM_STEP + TABLE_TOP,
-                  width: ARM_PX_W, height: TABLE_H,
+              {/* Table strips (one per arm) */}
+              {[ARM_C_X, ARM_B_X, ARM_A_X].map(ax => (
+                <div key={ax} style={{
+                  position: 'absolute',
+                  left: ax + TABLE_OX, top: ARM_TOP_Y,
+                  width: TABLE_W, height: ARM_PX_H,
                   background: TABLE_COLOR, borderRadius: 4, opacity: 0.88,
                 }} />
               ))}
 
-              {/* Right arc — connects Arm A → Arm B */}
+              {/* Top arch: C-top ↔ B-top (inverted U, opens downward) */}
               <div style={{
                 position: 'absolute',
-                left: ARM_LEFT + ARM_PX_W,
-                top: 0 * ARM_STEP + TABLE_TOP,
-                width: CURVE_W, height: CURVE_H,
-                borderRight: `${TABLE_H}px solid ${TABLE_COLOR}`,
-                borderTop: `${TABLE_H}px solid ${TABLE_COLOR}`,
-                borderBottom: `${TABLE_H}px solid ${TABLE_COLOR}`,
-                borderLeft: 'none',
-                borderRadius: `0 ${CURVE_W}px ${CURVE_W}px 0`,
+                left: ARCH_LEFT, top: ARCH_TOP,
+                width: ARCH_WIDTH, height: ARC_H,
+                borderTop:   `${TABLE_W}px solid ${TABLE_COLOR}`,
+                borderLeft:  `${TABLE_W}px solid ${TABLE_COLOR}`,
+                borderRight: `${TABLE_W}px solid ${TABLE_COLOR}`,
+                borderBottom: 'none',
+                borderRadius: `${ARC_H}px ${ARC_H}px 0 0`,
                 boxSizing: 'border-box', opacity: 0.88,
               }} />
 
-              {/* Left arc — connects Arm B → Arm C */}
+              {/* Bottom arc: B-bottom ↔ A-bottom (U-shape, opens upward) */}
               <div style={{
                 position: 'absolute',
-                left: ARM_LEFT - CURVE_W,
-                top: 1 * ARM_STEP + TABLE_TOP,
-                width: CURVE_W, height: CURVE_H,
-                borderLeft: `${TABLE_H}px solid ${TABLE_COLOR}`,
-                borderTop: `${TABLE_H}px solid ${TABLE_COLOR}`,
-                borderBottom: `${TABLE_H}px solid ${TABLE_COLOR}`,
-                borderRight: 'none',
-                borderRadius: `${CURVE_W}px 0 0 ${CURVE_W}px`,
+                left: ARC_LEFT, top: ARC_TOP,
+                width: ARC_WIDTH, height: ARC_H,
+                borderBottom: `${TABLE_W}px solid ${TABLE_COLOR}`,
+                borderLeft:   `${TABLE_W}px solid ${TABLE_COLOR}`,
+                borderRight:  `${TABLE_W}px solid ${TABLE_COLOR}`,
+                borderTop: 'none',
+                borderRadius: `0 0 ${ARC_H}px ${ARC_H}px`,
                 boxSizing: 'border-box', opacity: 0.88,
               }} />
 
-              {/* Seats */}
-              {renderArm('A', 0)}
-              {renderArm('B', 1)}
-              {renderArm('C', 2)}
+              {/* Seats — A (right, ↓), B (middle, ↑ reversed), C (left, ↓) */}
+              {renderArm('A')}
+              {renderArm('B')}
+              {renderArm('C')}
 
             </div>
           </div>

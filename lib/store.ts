@@ -1,5 +1,7 @@
 'use client';
-import { BudgetItem, Guest, ChecklistItem, TorontoBudgetItem, TorontoChecklistItem, VillaRoom } from './types';
+import { BudgetItem, Guest, ChecklistItem, TorontoBudgetItem, TorontoChecklistItem, VillaRoom, TorontoGuest, BudgetSettings } from './types';
+
+const DEFAULT_BUDGET_SETTINGS: BudgetSettings = { mainGuestCount: 106, poolGuestCount: 60, jeffNatTarget: 18000, mikeTarget: 10000 };
 import { GUEST_SEED, BUDGET_SEED, VILLA_SEED } from './seedData';
 import { supabase } from './supabase';
 
@@ -117,6 +119,28 @@ export function saveVillaRooms(rooms: VillaRoom[]) {
 }
 export async function syncVillaRooms(current: VillaRoom[]): Promise<VillaRoom[]> {
   return sbSync('villa_rooms', current);
+}
+
+// ── Toronto Guests ────────────────────────────────────────────────────────────
+
+export function getTorontoGuests(): TorontoGuest[] { return getLS('toronto_guests', []); }
+export function saveTorontoGuests(guests: TorontoGuest[]) {
+  saveLS('toronto_guests', guests);
+  sbPush('toronto_guests', guests);
+}
+export async function syncTorontoGuests(current: TorontoGuest[]): Promise<TorontoGuest[]> {
+  return sbSync('toronto_guests', current);
+}
+
+// ── Budget Settings (guest counts + contribution targets) ─────────────────────
+
+export function getBudgetSettings(): BudgetSettings { return getLS('budget_settings', DEFAULT_BUDGET_SETTINGS); }
+export function saveBudgetSettings(s: BudgetSettings) {
+  saveLS('budget_settings', s);
+  sbPush('budget_settings', s);
+}
+export async function syncBudgetSettings(current: BudgetSettings): Promise<BudgetSettings> {
+  return sbSync('budget_settings', current);
 }
 
 // ── Seating ───────────────────────────────────────────────────────────────────
