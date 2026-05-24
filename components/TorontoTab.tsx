@@ -171,7 +171,7 @@ export default function TorontoTab() {
 
           {/* Guest form modal */}
           {showGuestForm && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '2rem 1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '5rem 1rem 2rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
               <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '100%', maxWidth: '500px', margin: 'auto', flexShrink: 0 }}>
                 <h2 className="font-display" style={{ fontSize: '1.4rem', marginBottom: '1.25rem', fontWeight: 400 }}>
                   {editingGuest ? 'Edit Guest' : 'Add Toronto Guest'}
@@ -300,7 +300,7 @@ export default function TorontoTab() {
           </div>
 
           {showBudgetForm && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '2rem 1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '5rem 1rem 2rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
               <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '100%', maxWidth: '480px', margin: 'auto', flexShrink: 0 }}>
                 <h2 className="font-display" style={{ fontSize: '1.4rem', marginBottom: '1.25rem', fontWeight: 400 }}>{editingBudget ? 'Edit' : 'Add'} Toronto Budget Item</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -407,7 +407,7 @@ export default function TorontoTab() {
           </div>
 
           {showTaskForm && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '2rem 1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '5rem 1rem 2rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
               <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '100%', maxWidth: '420px', margin: 'auto', flexShrink: 0 }}>
                 <h2 className="font-display" style={{ fontSize: '1.4rem', marginBottom: '1.25rem', fontWeight: 400 }}>{editingTask ? 'Edit' : 'Add'} Task</h2>
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
