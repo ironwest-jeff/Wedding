@@ -245,7 +245,7 @@ export default function BudgetTab() {
           {actualOther > 0 && (
             <div style={{ background: 'var(--cream)', borderRadius: '10px', padding: '1rem', border: '1px dashed #C8BFC8' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color: '#9B8EA0' }}>Other / Shared</span>
+                <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color: '#9B8EA0' }}>Guest Room Payments</span>
                 <span className="font-sans-clean" style={{ fontSize: '0.6rem', color: 'var(--mid-gray)', fontStyle: 'italic' }}>no fixed amount</span>
               </div>
               <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.15rem' }}>{mask(actualOther)}</div>
