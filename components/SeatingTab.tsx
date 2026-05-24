@@ -3,61 +3,87 @@ import { useState, useEffect } from 'react';
 import { getGuests, syncGuests, getSeating, saveSeating, syncSeating } from '@/lib/store';
 import { Guest } from '@/lib/types';
 
-// ── Vertical Serpentine S — 3 vertical arms ──────────────────────────────────
-// Path: ARM_A (right, top→bottom) → bottom arc (right) → ARM_B (middle, bottom→top)
-//       → top arch (left) → ARM_C (left, top→bottom)
-// Reads: starts top-right, ends bottom-left = letter S
+// ── Two horizontal C-shaped tables stacked vertically ─────────────────────────
+//
+//  TOP TABLE (⊃) — arc on LEFT, opens RIGHT
+//
+//  ╔══ ○○○○○○○○○○○○○○○○○  (Arm A — upper row)
+//  ║   ═══════════════════  (table strip)
+//  ║   ○○○○○○○○○○○○○○○○○  (Arm A — lower row)
+//  ║
+//  ║   ○○○○○○○○○○○○○○○○○  (Arm B — upper row)
+//  ║   ═══════════════════  (table strip)
+//  ╚══ ○○○○○○○○○○○○○○○○○  (Arm B — lower row)
+//
+//  BOTTOM TABLE (⊂) — arc on RIGHT, opens LEFT
+//
+//  ○○○○○○○○○○○○○○○○○ ══╗  (Arm C — upper row)
+//  ═══════════════════   ║
+//  ○○○○○○○○○○○○○○○○○ ══╣  (Arm C — lower row)
+//                        ║
+//  ○○○○○○○○○○○○○○○○○ ══╣  (Arm D — upper row)
+//  ═══════════════════   ║
+//  ○○○○○○○○○○○○○○○○○ ══╝  (Arm D — lower row)
+//
 // ─────────────────────────────────────────────────────────────────────────────
-const SEAT_W    = 30;
-const SEAT_H    = 26;
-const ROW_GAP   = 4;
-const TABLE_W   = 16;
-const SEAT_HG   = 5;
 
-const ARM_ROWS  = 17;
-const ROW_STEP  = SEAT_H + ROW_GAP;                    // 30
-const ARM_PX_H  = ARM_ROWS * ROW_STEP - ROW_GAP;       // 506
-const ARM_W     = SEAT_W * 2 + SEAT_HG * 2 + TABLE_W; // 86
-const TABLE_OX  = SEAT_W + SEAT_HG;                    // 35 (table x-offset within arm)
-const R_SEAT_OX = SEAT_W + SEAT_HG + TABLE_W + SEAT_HG; // 56 (right-seat x-offset)
+const SEAT_W  = 26;
+const SEAT_H  = 26;
+const N_COLS  = 17;   // seat columns per arm
+const COL_STEP = 30;  // horizontal step between columns
+const GAP_ST  = 4;    // gap between seat row and table strip edge
+const TABLE_H = 14;   // table strip height
 
-const ARC_H      = 50;
-const ARC_PAD    = 16;
-const ARM_TOP_Y  = ARC_PAD + ARC_H;                    // 66
+const ARM_W_PX = (N_COLS - 1) * COL_STEP + SEAT_W;   // 506
+const B_ROW_OY = SEAT_H + GAP_ST + TABLE_H + GAP_ST;  // 48  (y-offset: top row → bottom row)
+const ARM_H_PX = B_ROW_OY + SEAT_H;                   // 74  (total arm height)
 
-const COL_SPACING = 176;
-const ARM_C_X   = 10;
-const ARM_B_X   = ARM_C_X + COL_SPACING;               // 186
-const ARM_A_X   = ARM_B_X + COL_SPACING;               // 362
+const ARC_DEPTH  = 50;   // horizontal width of the side arc connector
+const ARC_RADIUS = 40;   // border-radius for arc corners
+const INNER_GAP  = 80;   // vertical gap between arm A and arm B (interior of each C)
+const L_MARGIN   = 16;
+const T_MARGIN   = 48;
+const TABLE_GAP  = 68;   // vertical gap between the two C tables
 
-const CANVAS_W  = ARM_A_X + ARM_W + 10;                // 458
-const CANVAS_H  = ARM_TOP_Y + ARM_PX_H + ARC_H + ARC_PAD; // 638
-const TOTAL_SEATS = ARM_ROWS * 2 * 3;                  // 102
+// ── Top C (⊃): left arc, arms extend right ───────────────────────────────────
+const C1_ARM_X = L_MARGIN + ARC_DEPTH;            // 66  — arms start after arc
+const C1_A_Y   = T_MARGIN;                         // 48  — arm A (upper)
+const C1_B_Y   = C1_A_Y + ARM_H_PX + INNER_GAP;  // 202 — arm B (lower)
+// Arc spans from arm A's table strip down to arm B's table strip
+const C1_ARC_X = L_MARGIN;                         // 16
+const C1_ARC_Y = C1_A_Y + SEAT_H + GAP_ST;        // 78
+const C1_ARC_H = (C1_B_Y + SEAT_H + GAP_ST + TABLE_H) - C1_ARC_Y; // 168
+
+// ── Bottom C (⊂): right arc, arms extend left ────────────────────────────────
+const C2_ARM_X = L_MARGIN;                                   // 16
+const C2_C_Y   = C1_B_Y + ARM_H_PX + TABLE_GAP;             // 344 — arm C (upper)
+const C2_D_Y   = C2_C_Y + ARM_H_PX + INNER_GAP;             // 498 — arm D (lower)
+const C2_ARC_X = L_MARGIN + ARM_W_PX;                        // 522
+const C2_ARC_Y = C2_C_Y + SEAT_H + GAP_ST;                  // 374
+const C2_ARC_H = (C2_D_Y + SEAT_H + GAP_ST + TABLE_H) - C2_ARC_Y; // 168
+
+const CANVAS_W    = L_MARGIN + ARC_DEPTH + ARM_W_PX + L_MARGIN; // 588
+const CANVAS_H    = C2_D_Y + ARM_H_PX + 28;                      // 600
+const TOTAL_SEATS = N_COLS * 2 * 4;                               // 136
 
 const TABLE_COLOR = '#8B7355';
 
-// Top arch: C-top ↔ B-top (inverted U — opens downward)
-// Left border = ARM_C table strip; right border = ARM_B table strip right edge
-const ARCH_LEFT  = ARM_C_X + TABLE_OX;                 // 45
-const ARCH_RIGHT = ARM_B_X + TABLE_OX + TABLE_W;       // 237
-const ARCH_WIDTH = ARCH_RIGHT - ARCH_LEFT;              // 192
-const ARCH_TOP   = ARC_PAD;                             // 16
-
-// Bottom arc: B-bottom ↔ A-bottom (U-shape — opens upward)
-const ARC_LEFT   = ARM_B_X + TABLE_OX;                 // 221
-const ARC_RIGHT  = ARM_A_X + TABLE_OX + TABLE_W;       // 413
-const ARC_WIDTH  = ARC_RIGHT - ARC_LEFT;               // 192
-const ARC_TOP    = ARM_TOP_Y + ARM_PX_H;               // 572
+const ARM_CFG = {
+  A: { x: C1_ARM_X, y: C1_A_Y },
+  B: { x: C1_ARM_X, y: C1_B_Y },
+  C: { x: C2_ARM_X, y: C2_C_Y },
+  D: { x: C2_ARM_X, y: C2_D_Y },
+} as const;
 
 type SeatingMap = Record<string, string>;
 const SIDE_BG: Record<string, string> = { J: '#D6E8F5', N: '#F5D6E8', Both: '#D6F5DC' };
 const SIDE_BD: Record<string, string> = { J: '#90B8D8', N: '#D890B8', Both: '#90D8A8' };
 
 export default function SeatingTab() {
-  const [guests, setGuests]         = useState<Guest[]>([]);
-  const [seating, setSeating]       = useState<SeatingMap>({});
+  const [guests,     setGuests]     = useState<Guest[]>([]);
+  const [seating,    setSeating]    = useState<SeatingMap>({});
   const [activeSeat, setActiveSeat] = useState<string | null>(null);
-  const [search, setSearch]         = useState('');
+  const [search,     setSearch]     = useState('');
 
   useEffect(() => {
     const lg = getGuests(); const ls = getSeating();
@@ -99,8 +125,8 @@ export default function SeatingTab() {
   };
 
   function Seat({ sid }: { sid: string }) {
-    const gid = seating[sid];
-    const g   = gid ? guestMap[gid] : undefined;
+    const gid  = seating[sid];
+    const g    = gid ? guestMap[gid] : undefined;
     const active = activeSeat === sid;
     return (
       <div
@@ -112,7 +138,7 @@ export default function SeatingTab() {
           border: `2px solid ${active ? '#B08A50' : g ? SIDE_BD[g.side] : '#DDD8D0'}`,
           borderRadius: 5, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '0.42rem', fontFamily: 'Jost',
+          fontSize: '0.4rem', fontFamily: 'Jost',
           color: g ? '#333' : '#C5C0B8',
           textAlign: 'center', lineHeight: 1.1, padding: '2px',
           transition: 'all 0.12s', userSelect: 'none', overflow: 'hidden',
@@ -123,27 +149,24 @@ export default function SeatingTab() {
     );
   }
 
-  // ARM_B is reversed (bottom→top) so the serpentine S flows correctly
-  function renderArm(letter: 'A' | 'B' | 'C') {
-    const armX = letter === 'A' ? ARM_A_X : letter === 'B' ? ARM_B_X : ARM_C_X;
-    const rev  = letter === 'B';
-    return Array.from({ length: ARM_ROWS }, (_, row) => {
-      const displayRow = rev ? ARM_ROWS - 1 - row : row;
-      const yPos = ARM_TOP_Y + displayRow * ROW_STEP;
-      return (
-        <div key={`${letter}-${row}`}>
-          <div style={{ position: 'absolute', left: armX, top: yPos }}>
-            <Seat sid={`${letter}-L-${row}`} />
-          </div>
-          <div style={{ position: 'absolute', left: armX + R_SEAT_OX, top: yPos }}>
-            <Seat sid={`${letter}-R-${row}`} />
-          </div>
+  // Each arm: N_COLS columns × 2 rows (top + bottom) of seats
+  function renderArm(arm: 'A' | 'B' | 'C' | 'D') {
+    const { x: ax, y: ay } = ARM_CFG[arm];
+    return Array.from({ length: N_COLS }, (_, col) => (
+      <div key={`${arm}-${col}`}>
+        {/* Top row */}
+        <div style={{ position: 'absolute', left: ax + col * COL_STEP, top: ay }}>
+          <Seat sid={`${arm}-T-${col}`} />
         </div>
-      );
-    });
+        {/* Bottom row */}
+        <div style={{ position: 'absolute', left: ax + col * COL_STEP, top: ay + B_ROW_OY }}>
+          <Seat sid={`${arm}-B-${col}`} />
+        </div>
+      </div>
+    ));
   }
 
-  const activeGuest = activeSeat ? guestMap[seating[activeSeat]] : null;
+  const activeGuest   = activeSeat ? guestMap[seating[activeSeat]] : null;
   const displayGuests = (activeSeat ? guests : unassigned)
     .filter(g => `${g.firstName} ${g.lastName}`.toLowerCase().includes(searchLower));
 
@@ -153,10 +176,10 @@ export default function SeatingTab() {
       {/* ── Stats ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total Seats',     value: TOTAL_SEATS,                accent: 'var(--charcoal)' },
-          { label: 'Assigned',        value: assignedCount,              accent: 'var(--deep-sage)' },
+          { label: 'Total Seats',     value: TOTAL_SEATS,                 accent: 'var(--charcoal)'   },
+          { label: 'Assigned',        value: assignedCount,               accent: 'var(--deep-sage)'  },
           { label: 'Empty Seats',     value: TOTAL_SEATS - assignedCount, accent: 'var(--dusty-rose)' },
-          { label: 'Unseated Guests', value: unassigned.length,          accent: 'var(--champagne)' },
+          { label: 'Unseated Guests', value: unassigned.length,           accent: 'var(--champagne)'  },
         ].map(s => (
           <div key={s.label} style={{ ...card, padding: '1rem' }}>
             <p className="font-sans-clean" style={{ fontSize: '0.62rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.4rem' }}>{s.label}</p>
@@ -165,14 +188,15 @@ export default function SeatingTab() {
         ))}
       </div>
 
-      {/* ── Table ── */}
+      {/* ── Table canvas ── */}
       <div style={{ ...card, padding: '1.5rem', marginBottom: '1.5rem' }}>
+
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <h2 className="font-display" style={{ fontSize: '1.3rem', fontWeight: 400 }}>Serpentine Table</h2>
             <p className="font-sans-clean" style={{ fontSize: '0.7rem', color: 'var(--mid-gray)', marginTop: '0.15rem' }}>
-              {activeSeat ? 'Seat selected — pick a guest below' : 'Click any seat · then pick a guest below'}
+              Two C-shaped sections · {activeSeat ? 'seat selected — pick a guest below' : 'click any seat · then pick a guest below'}
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -194,58 +218,91 @@ export default function SeatingTab() {
           </div>
         </div>
 
-        {/* Serpentine canvas — centered, horizontally scrollable on small screens */}
+        {/* Canvas */}
         <div style={{ overflowX: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'center', minWidth: CANVAS_W }}>
             <div style={{ position: 'relative', width: CANVAS_W, height: CANVAS_H, flexShrink: 0 }}>
 
-              {/* Table strips (one per arm) */}
-              {[ARM_C_X, ARM_B_X, ARM_A_X].map(ax => (
-                <div key={ax} style={{
-                  position: 'absolute',
-                  left: ax + TABLE_OX, top: ARM_TOP_Y,
-                  width: TABLE_W, height: ARM_PX_H,
-                  background: TABLE_COLOR, borderRadius: 4, opacity: 0.88,
-                }} />
-              ))}
-
-              {/* Top arch: C-top ↔ B-top (inverted U, opens downward) */}
+              {/* ── Table labels ── */}
               <div style={{
                 position: 'absolute',
-                left: ARCH_LEFT, top: ARCH_TOP,
-                width: ARCH_WIDTH, height: ARC_H,
-                borderTop:   `${TABLE_W}px solid ${TABLE_COLOR}`,
-                borderLeft:  `${TABLE_W}px solid ${TABLE_COLOR}`,
-                borderRight: `${TABLE_W}px solid ${TABLE_COLOR}`,
-                borderBottom: 'none',
-                borderRadius: `${ARC_H}px ${ARC_H}px 0 0`,
-                boxSizing: 'border-box', opacity: 0.88,
-              }} />
+                top: C1_A_Y - 24,
+                left: C1_ARM_X + ARM_W_PX / 2,
+                transform: 'translateX(-50%)',
+                fontFamily: 'Jost', fontSize: '0.58rem', letterSpacing: '0.12em',
+                textTransform: 'uppercase', color: 'var(--mid-gray)', whiteSpace: 'nowrap',
+              }}>Top Table ⊃</div>
 
-              {/* Bottom arc: B-bottom ↔ A-bottom (U-shape, opens upward) */}
               <div style={{
                 position: 'absolute',
-                left: ARC_LEFT, top: ARC_TOP,
-                width: ARC_WIDTH, height: ARC_H,
-                borderBottom: `${TABLE_W}px solid ${TABLE_COLOR}`,
-                borderLeft:   `${TABLE_W}px solid ${TABLE_COLOR}`,
-                borderRight:  `${TABLE_W}px solid ${TABLE_COLOR}`,
-                borderTop: 'none',
-                borderRadius: `0 0 ${ARC_H}px ${ARC_H}px`,
-                boxSizing: 'border-box', opacity: 0.88,
+                top: C2_C_Y - 24,
+                left: C2_ARM_X + ARM_W_PX / 2,
+                transform: 'translateX(-50%)',
+                fontFamily: 'Jost', fontSize: '0.58rem', letterSpacing: '0.12em',
+                textTransform: 'uppercase', color: 'var(--mid-gray)', whiteSpace: 'nowrap',
+              }}>Bottom Table ⊂</div>
+
+              {/* ── Table strips (one per arm) ── */}
+              {(['A', 'B', 'C', 'D'] as const).map(arm => {
+                const { x, y } = ARM_CFG[arm];
+                return (
+                  <div key={`strip-${arm}`} style={{
+                    position: 'absolute',
+                    left: x,
+                    top: y + SEAT_H + GAP_ST,
+                    width: ARM_W_PX,
+                    height: TABLE_H,
+                    background: TABLE_COLOR,
+                    borderRadius: 4,
+                    opacity: 0.88,
+                  }} />
+                );
+              })}
+
+              {/* ── Top C left arc (⊃) ── */}
+              <div style={{
+                position: 'absolute',
+                left: C1_ARC_X,
+                top: C1_ARC_Y,
+                width: ARC_DEPTH,
+                height: C1_ARC_H,
+                borderTop:    `${TABLE_H}px solid ${TABLE_COLOR}`,
+                borderLeft:   `${TABLE_H}px solid ${TABLE_COLOR}`,
+                borderBottom: `${TABLE_H}px solid ${TABLE_COLOR}`,
+                borderRight: 'none',
+                borderRadius: `${ARC_RADIUS}px 0 0 ${ARC_RADIUS}px`,
+                boxSizing: 'border-box',
+                opacity: 0.88,
               }} />
 
-              {/* Seats — A (right, ↓), B (middle, ↑ reversed), C (left, ↓) */}
+              {/* ── Bottom C right arc (⊂) ── */}
+              <div style={{
+                position: 'absolute',
+                left: C2_ARC_X,
+                top: C2_ARC_Y,
+                width: ARC_DEPTH,
+                height: C2_ARC_H,
+                borderTop:    `${TABLE_H}px solid ${TABLE_COLOR}`,
+                borderRight:  `${TABLE_H}px solid ${TABLE_COLOR}`,
+                borderBottom: `${TABLE_H}px solid ${TABLE_COLOR}`,
+                borderLeft: 'none',
+                borderRadius: `0 ${ARC_RADIUS}px ${ARC_RADIUS}px 0`,
+                boxSizing: 'border-box',
+                opacity: 0.88,
+              }} />
+
+              {/* ── Seats ── */}
               {renderArm('A')}
               {renderArm('B')}
               {renderArm('C')}
+              {renderArm('D')}
 
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Guest panel — below the table ── */}
+      {/* ── Guest panel ── */}
       <div style={{ ...card, padding: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h3 className="font-display" style={{ fontSize: '1.1rem', fontWeight: 400 }}>
@@ -323,6 +380,7 @@ export default function SeatingTab() {
           </div>
         )}
       </div>
+
     </div>
   );
 }
