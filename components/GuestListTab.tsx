@@ -6,7 +6,7 @@ import { Guest, GuestSide, RSVPStatus, DietaryRestriction, Accommodation, Weddin
 const RSVP_STATUSES: RSVPStatus[] = ['Confirmed', 'Pending', 'Declined'];
 const DIETARY: DietaryRestriction[] = ['None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Kosher', 'Halal', 'Nut Allergy', 'Dairy-Free', 'Other'];
 const ACCOMMODATIONS: Accommodation[] = ['Hotel', 'Airbnb', 'Family Home', 'Other', 'Local — No Stay'];
-const DAYS: WeddingDay[] = ['Aug 31 — Welcome Dinner', 'Sep 1 — Wedding Day', 'Sep 2 — Pool Party', 'Sep 3 — Checkout'];
+const DAYS: WeddingDay[] = ['Aug 31 — Welcome Dinner', 'Sep 1 — Wedding Day', 'Sep 2 — Pool Party'];
 const SIDES: { value: GuestSide; label: string }[] = [
   { value: 'J', label: "Jeff's Side" },
   { value: 'N', label: "Nat's Side" },
