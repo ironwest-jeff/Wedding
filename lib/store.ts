@@ -30,14 +30,10 @@ const LEGACY_KEYS = [
  * wedding-scoped keys so Jeff & Nat's data is preserved automatically.
  */
 export function migrateLegacyLocalStorage(): void {
-  if (!_weddingId || typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
+  // Data is now in Supabase scoped by wedding_id — just wipe any old unprefixed keys
+  // so a new user on the same device never inherits another couple's data
   for (const key of LEGACY_KEYS) {
-    const newKey = `${_weddingId}_${key}`;
-    if (!localStorage.getItem(newKey)) {
-      const old = localStorage.getItem(key);
-      if (old) localStorage.setItem(newKey, old);
-    }
-    // Always remove the old unprefixed key so the next user doesn't inherit this data
     localStorage.removeItem(key);
   }
 }
