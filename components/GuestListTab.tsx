@@ -1,8 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { getGuests, saveGuests, syncGuests, getWeddingId } from '@/lib/store';
-import { Guest, GuestSide, RSVPStatus, DietaryRestriction, Accommodation, WeddingDay, RsvpSubmission } from '@/lib/types';
+import { Guest, GuestSide, RSVPStatus, DietaryRestriction, Accommodation, WeddingDay, RsvpSubmission, Invite } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
+
+function genCode(): string {
+  return Math.random().toString(36).slice(2, 6) + Math.random().toString(36).slice(2, 6);
+}
 
 const RSVP_STATUSES: RSVPStatus[] = ['Confirmed', 'Pending', 'Declined'];
 const DIETARY: DietaryRestriction[] = ['None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Kosher', 'Halal', 'Nut Allergy', 'Dairy-Free', 'Other'];
@@ -50,6 +54,12 @@ export default function GuestListTab() {
   const [inbox, setInbox] = useState<RsvpSubmission[]>([]);
   const [inboxOpen, setInboxOpen] = useState(true);
 
+  // Invite links
+  const [invites, setInvites] = useState<Record<string, Invite>>({}); // keyed by guest_id
+  const [inviteOpen, setInviteOpen] = useState<string | null>(null);  // guest_id of open invite panel
+  const [inviteSlug, setInviteSlug] = useState<string | null>(null);
+  const [generatingInvite, setGeneratingInvite] = useState<string | null>(null);
+
   useEffect(() => {
     const local = getGuests();
     setGuests(local);
@@ -59,6 +69,8 @@ export default function GuestListTab() {
   useEffect(() => {
     const weddingId = getWeddingId();
     if (!weddingId) return;
+
+    // Load inbox
     supabase
       .from('rsvp_submissions')
       .select('*')
@@ -66,6 +78,26 @@ export default function GuestListTab() {
       .eq('imported', false)
       .order('submitted_at', { ascending: false })
       .then(({ data }) => { if (data) setInbox(data as RsvpSubmission[]); });
+
+    // Load existing invites + wedding slug
+    supabase
+      .from('invites')
+      .select('*')
+      .eq('wedding_id', weddingId)
+      .then(({ data }) => {
+        if (data) {
+          const map: Record<string, Invite> = {};
+          (data as Invite[]).forEach(inv => { map[inv.guest_id] = inv; });
+          setInvites(map);
+        }
+      });
+
+    supabase
+      .from('weddings')
+      .select('slug')
+      .eq('id', weddingId)
+      .single()
+      .then(({ data }) => { if (data) setInviteSlug((data as { slug: string }).slug); });
   }, []);
 
   async function importSubmission(sub: RsvpSubmission) {
@@ -98,6 +130,35 @@ export default function GuestListTab() {
   async function dismissSubmission(id: string) {
     await supabase.from('rsvp_submissions').update({ imported: true }).eq('id', id);
     setInbox(prev => prev.filter(s => s.id !== id));
+  }
+
+  async function getOrCreateInvite(guest: Guest) {
+    const weddingId = getWeddingId();
+    if (!weddingId || !inviteSlug) return;
+    if (invites[guest.id]) {
+      setInviteOpen(guest.id);
+      return;
+    }
+    setGeneratingInvite(guest.id);
+    const code = genCode();
+    const { data } = await supabase.from('invites').insert({
+      wedding_id: weddingId,
+      code,
+      guest_id: guest.id,
+      first_name: guest.firstName,
+      last_name: guest.lastName,
+      max_guests: guest.plusOne ? 2 : 1,
+    }).select().single();
+    if (data) {
+      setInvites(prev => ({ ...prev, [guest.id]: data as Invite }));
+    }
+    setGeneratingInvite(null);
+    setInviteOpen(guest.id);
+  }
+
+  function inviteUrl(inv: Invite): string {
+    if (typeof window === 'undefined' || !inviteSlug) return '';
+    return `${window.location.origin}/${inviteSlug}/rsvp/${inv.code}`;
   }
 
   function save(updated: Guest[]) { setGuests(updated); saveGuests(updated); }
@@ -437,11 +498,49 @@ export default function GuestListTab() {
                     >
                       {g.rsvp === 'Confirmed' ? '✓ Confirmed' : g.rsvp === 'Declined' ? '✕ Declined' : '○ Confirm?'}
                     </button>
+                    {/* Invite Link button */}
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (inviteOpen === g.id) { setInviteOpen(null); return; }
+                        getOrCreateInvite(g);
+                      }}
+                      title="Get personalized invite link"
+                      style={{
+                        padding: '0.3rem 0.6rem',
+                        border: `1px solid ${invites[g.id] ? 'var(--sage)' : 'var(--light-gray)'}`,
+                        borderRadius: '6px', cursor: 'pointer',
+                        background: invites[g.id] ? '#EEF4EE' : 'white',
+                        color: invites[g.id] ? 'var(--deep-sage)' : 'var(--mid-gray)',
+                        fontSize: '0.7rem',
+                      }}
+                    >
+                      {generatingInvite === g.id ? '…' : invites[g.id]?.used ? '✓ Link' : '🔗'}
+                    </button>
                     <button onClick={e => { e.stopPropagation(); startEdit(g); }} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', fontSize: '0.7rem' }}>✎</button>
                     <button onClick={e => { e.stopPropagation(); deleteGuest(g.id); }} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', cursor: 'pointer', background: 'white', color: 'var(--dusty-rose)', fontSize: '0.7rem' }}>✕</button>
                     <span style={{ color: 'var(--mid-gray)', fontSize: '0.7rem' }}>{expandedId === g.id ? '▲' : '▼'}</span>
                   </div>
                 </div>
+                {/* Invite link panel */}
+                {inviteOpen === g.id && invites[g.id] && (
+                  <div style={{ borderTop: '1px solid var(--sage)', padding: '1rem 1.25rem', background: '#F0F5F0', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'Jost, sans-serif', fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--deep-sage)', flexShrink: 0 }}>Invite link</span>
+                    <code style={{ flex: 1, fontSize: '0.72rem', color: 'var(--charcoal)', wordBreak: 'break-all', fontFamily: 'monospace', background: 'white', padding: '0.35rem 0.6rem', borderRadius: 6, border: '1px solid var(--light-gray)' }}>
+                      {inviteUrl(invites[g.id])}
+                    </code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(inviteUrl(invites[g.id]))}
+                      style={{ padding: '0.35rem 0.85rem', background: 'var(--charcoal)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'Jost, sans-serif', fontSize: '0.68rem', letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+                    >
+                      Copy
+                    </button>
+                    {invites[g.id].used && (
+                      <span style={{ fontFamily: 'Jost, sans-serif', fontSize: '0.68rem', color: 'var(--deep-sage)', background: '#D4EDDA', padding: '0.25rem 0.6rem', borderRadius: 6, whiteSpace: 'nowrap' }}>✓ RSVP received</span>
+                    )}
+                  </div>
+                )}
+
                 {expandedId === g.id && (
                   <div style={{ borderTop: '1px solid var(--light-gray)', padding: '1rem 1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', background: 'var(--warm-white)', borderRadius: '0 0 12px 12px' }}>
                     {[

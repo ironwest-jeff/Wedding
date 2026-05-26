@@ -143,6 +143,19 @@ export interface WeddingEvent {
   dresscode?: string;   // "Black Tie", "Cocktail Attire", etc.
 }
 
+// ── Personalized guest invites ───────────────────────────────────────
+export interface Invite {
+  id: string;
+  wedding_id: string;
+  code: string;
+  guest_id: string;
+  first_name: string;
+  last_name: string;
+  max_guests: number;
+  used: boolean;
+  created_at: string;
+}
+
 // ── RSVP Submissions (from public guest portal) ─────────────────────
 export interface RsvpSubmission {
   id: string;
@@ -154,6 +167,8 @@ export interface RsvpSubmission {
   dietary: string;
   dietary_notes: string;
   meal_choice: string;
+  invite_code: string;
+  guest_id: string;
   notes: string;
   submitted_at: string;
   imported: boolean;
