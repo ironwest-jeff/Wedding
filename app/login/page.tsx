@@ -10,6 +10,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -37,6 +39,16 @@ export default function LoginPage() {
     } else {
       router.replace('/');
     }
+  }
+
+  async function sendReset() {
+    if (!email) { setError('Enter your email above first.'); return; }
+    setResetting(true);
+    await supabase.auth.resetPasswordForEmail(email.toLowerCase().trim(), {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    });
+    setResetting(false);
+    setResetSent(true);
   }
 
   const inputStyle: React.CSSProperties = {
@@ -106,10 +118,23 @@ export default function LoginPage() {
           </div>
 
           <div style={{ marginBottom: '1.25rem' }}>
-            <label className="font-sans-clean" style={{
-              display: 'block', fontSize: '0.58rem', letterSpacing: '0.15em',
-              textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.4rem',
-            }}>Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.4rem' }}>
+              <label className="font-sans-clean" style={{
+                fontSize: '0.58rem', letterSpacing: '0.15em',
+                textTransform: 'uppercase', color: 'var(--mid-gray)',
+              }}>Password</label>
+              <button
+                type="button" onClick={sendReset} disabled={resetting}
+                className="font-sans-clean"
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '0.62rem', color: 'var(--mid-gray)',
+                  textDecoration: 'underline', padding: 0,
+                }}
+              >
+                {resetting ? 'Sending…' : resetSent ? '✓ Check your email' : 'Forgot password?'}
+              </button>
+            </div>
             <input
               type="password" required value={password}
               onChange={e => setPassword(e.target.value)}
