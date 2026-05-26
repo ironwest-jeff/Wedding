@@ -37,6 +37,8 @@ export function migrateLegacyLocalStorage(): void {
       const old = localStorage.getItem(key);
       if (old) localStorage.setItem(newKey, old);
     }
+    // Always remove the old unprefixed key so the next user doesn't inherit this data
+    localStorage.removeItem(key);
   }
 }
 
