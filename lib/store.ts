@@ -101,7 +101,7 @@ async function sbSync<T>(key: string, current: T): Promise<T> {
 
 // ── Budget ────────────────────────────────────────────────────────────────────
 
-export function getBudgetItems(): BudgetItem[] { return getLS(lk('budget_items'), BUDGET_SEED); }
+export function getBudgetItems(): BudgetItem[] { return getLS(lk('budget_items'), []); }
 export function saveBudgetItems(items: BudgetItem[]) {
   saveLS(lk('budget_items'), items);
   sbPush('budget_items', items);
@@ -112,7 +112,7 @@ export async function syncBudgetItems(current: BudgetItem[]): Promise<BudgetItem
 
 // ── Guests ────────────────────────────────────────────────────────────────────
 
-export function getGuests(): Guest[] { return getLS(lk('guests_v2'), GUEST_SEED); }
+export function getGuests(): Guest[] { return getLS(lk('guests_v2'), []); }
 export function saveGuests(guests: Guest[]) {
   saveLS(lk('guests_v2'), guests);
   sbPush('guests_v2', guests);
@@ -123,7 +123,7 @@ export async function syncGuests(current: Guest[]): Promise<Guest[]> {
 
 // ── Checklist ─────────────────────────────────────────────────────────────────
 
-export function getChecklist(): ChecklistItem[] { return getLS(lk('checklist_v2'), CHECKLIST_SEED); }
+export function getChecklist(): ChecklistItem[] { return getLS(lk('checklist_v2'), []); }
 export function saveChecklist(items: ChecklistItem[]) {
   saveLS(lk('checklist_v2'), items);
   sbPush('checklist_v2', items);
@@ -156,7 +156,7 @@ export async function syncTorontoChecklist(current: TorontoChecklistItem[]): Pro
 
 // ── Villa Rooms ───────────────────────────────────────────────────────────────
 
-export function getVillaRooms(): VillaRoom[] { return getLS(lk('villa_rooms'), VILLA_SEED); }
+export function getVillaRooms(): VillaRoom[] { return getLS(lk('villa_rooms'), []); }
 export function saveVillaRooms(rooms: VillaRoom[]) {
   saveLS(lk('villa_rooms'), rooms);
   sbPush('villa_rooms', rooms);
