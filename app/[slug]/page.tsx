@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Wedding } from '@/lib/types';
@@ -19,11 +19,38 @@ function dateRange(start: string | null, end: string | null): string {
 
 export default function WeddingPublicPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params?.slug as string;
 
   const [wedding, setWedding] = useState<Wedding | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Invite code entry
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [checkingCode, setCheckingCode] = useState(false);
+  const [showCodeEntry, setShowCodeEntry] = useState(false);
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    const code = codeInput.trim().toLowerCase();
+    if (!code || !wedding) return;
+    setCodeError('');
+    setCheckingCode(true);
+    const { data } = await supabase
+      .from('invites')
+      .select('code, wedding_id')
+      .eq('code', code)
+      .eq('wedding_id', wedding.id)
+      .maybeSingle();
+    setCheckingCode(false);
+    if (!data) {
+      setCodeError('Code not found. Please check and try again.');
+      return;
+    }
+    router.push(`/${slug}/${code}`);
+  }
 
   useEffect(() => {
     if (!slug) return;
@@ -199,6 +226,54 @@ export default function WeddingPublicPage() {
         <Link href={`/${slug}/rsvp`} style={{ display: 'inline-block', padding: '1.1rem 3.5rem', background: 'white', borderRadius: '4px', color: 'var(--charcoal)', fontFamily: 'Jost, sans-serif', fontSize: '0.72rem', letterSpacing: '0.3em', textTransform: 'uppercase', textDecoration: 'none', fontWeight: 500 }}>
           RSVP Now
         </Link>
+
+        {/* Invite code entry */}
+        <div style={{ marginTop: '2.5rem' }}>
+          {!showCodeEntry ? (
+            <button
+              onClick={() => setShowCodeEntry(true)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Jost, sans-serif', fontSize: '0.65rem', letterSpacing: '0.12em', color: 'rgba(255,255,255,0.4)', textDecoration: 'underline', textUnderlineOffset: '3px' }}
+            >
+              Have a personal invite code?
+            </button>
+          ) : (
+            <form onSubmit={submitCode} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', animation: 'fadeIn 0.2s ease' }}>
+              <p style={{ fontFamily: 'Jost, sans-serif', fontSize: '0.62rem', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>
+                Enter your invite code
+              </p>
+              <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: 320, justifyContent: 'center' }}>
+                <input
+                  autoFocus
+                  value={codeInput}
+                  onChange={e => { setCodeInput(e.target.value); setCodeError(''); }}
+                  placeholder="e.g. abc12345"
+                  style={{
+                    flex: 1, padding: '0.7rem 1rem',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    borderRadius: 8, color: 'white',
+                    fontFamily: 'Jost, sans-serif', fontSize: '0.9rem',
+                    outline: 'none', letterSpacing: '0.12em',
+                    textAlign: 'center',
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={checkingCode}
+                  style={{ padding: '0.7rem 1.1rem', background: 'var(--blush)', border: 'none', borderRadius: 8, cursor: checkingCode ? 'default' : 'pointer', fontFamily: 'Jost, sans-serif', fontSize: '0.72rem', fontWeight: 600, color: 'var(--charcoal)', whiteSpace: 'nowrap' }}
+                >
+                  {checkingCode ? '…' : 'Go →'}
+                </button>
+              </div>
+              {codeError && (
+                <p style={{ fontFamily: 'Jost, sans-serif', fontSize: '0.7rem', color: 'var(--blush)' }}>{codeError}</p>
+              )}
+              <button onClick={() => { setShowCodeEntry(false); setCodeError(''); setCodeInput(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Jost, sans-serif', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em' }}>
+                cancel
+              </button>
+            </form>
+          )}
+        </div>
       </div>
 
       {/* ── Footer ────────────────────────────────────────────────────── */}
