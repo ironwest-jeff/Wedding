@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import BudgetTab from '@/components/BudgetTab';
 import GuestListTab from '@/components/GuestListTab';
@@ -30,12 +30,200 @@ function weddingDateRange(start: string | null, end: string | null): string {
   return `${fmtDate(start)} – ${fmtDate(end)}, ${year}`;
 }
 
+// ── Members Modal ─────────────────────────────────────────────────────────────
+
+function MembersModal({
+  weddingId,
+  members,
+  onClose,
+  onSaved,
+}: {
+  weddingId: string;
+  members: string[];
+  onClose: () => void;
+  onSaved: (emails: string[]) => void;
+}) {
+  const [list, setList] = useState<string[]>(members);
+  const [input, setInput] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function addEmail() {
+    const email = input.trim().toLowerCase();
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErr('Please enter a valid email address.');
+      return;
+    }
+    if (list.includes(email)) {
+      setErr('That email is already in the list.');
+      return;
+    }
+    setErr('');
+    setList(prev => [...prev, email]);
+    setInput('');
+  }
+
+  function removeEmail(email: string) {
+    setList(prev => prev.filter(e => e !== email));
+  }
+
+  async function save() {
+    setSaving(true);
+    setErr('');
+    const { error } = await supabase
+      .from('weddings')
+      .update({ member_emails: list })
+      .eq('id', weddingId);
+    setSaving(false);
+    if (error) { setErr(error.message); return; }
+    onSaved(list);
+    onClose();
+  }
+
+  const overlay: React.CSSProperties = {
+    position: 'fixed', inset: 0, zIndex: 1000,
+    background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem',
+  };
+
+  const modal: React.CSSProperties = {
+    background: 'white', borderRadius: 16, padding: '2rem',
+    maxWidth: 480, width: '100%',
+    boxShadow: '0 8px 60px rgba(0,0,0,0.25)',
+  };
+
+  const inputStyle: React.CSSProperties = {
+    flex: 1, padding: '0.65rem 0.9rem',
+    border: '1.5px solid var(--light-gray)',
+    borderRadius: 8, fontSize: '0.85rem',
+    outline: 'none', color: 'var(--charcoal)',
+    fontFamily: 'inherit', background: 'white',
+  };
+
+  return (
+    <div style={overlay} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={modal}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+          <div>
+            <h2 className="font-display" style={{ fontSize: '1.5rem', fontWeight: 300, color: 'var(--charcoal)', marginBottom: '0.2rem' }}>
+              Manage <span style={{ fontStyle: 'italic', color: 'var(--blush)' }}>Access</span>
+            </h2>
+            <p className="font-sans-clean" style={{ fontSize: '0.65rem', color: 'var(--mid-gray)', letterSpacing: '0.05em' }}>
+              Add email addresses for people who should access this wedding dashboard.
+            </p>
+          </div>
+          <button onClick={onClose} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '1.2rem', color: 'var(--mid-gray)', padding: '0 0 0 1rem',
+          }}>✕</button>
+        </div>
+
+        {/* Add email row */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          <input
+            ref={inputRef}
+            type="email"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addEmail(); }}}
+            placeholder="email@example.com"
+            className="font-sans-clean"
+            style={inputStyle}
+          />
+          <button
+            onClick={addEmail}
+            className="font-sans-clean"
+            style={{
+              padding: '0.65rem 1rem',
+              background: 'var(--charcoal)', color: 'white',
+              border: 'none', borderRadius: 8, cursor: 'pointer',
+              fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Add
+          </button>
+        </div>
+
+        {err && (
+          <p className="font-sans-clean" style={{
+            fontSize: '0.7rem', color: '#721C24',
+            background: '#F8D7DA', padding: '0.4rem 0.7rem',
+            borderRadius: 6, marginBottom: '0.75rem',
+          }}>{err}</p>
+        )}
+
+        {/* Member list */}
+        <div style={{ minHeight: 40, marginBottom: '1.5rem' }}>
+          {list.length === 0 ? (
+            <p className="font-sans-clean" style={{ fontSize: '0.72rem', color: 'var(--mid-gray)', fontStyle: 'italic' }}>
+              No members yet — only the account owner can access this wedding.
+            </p>
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {list.map(email => (
+                <li key={email} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: 'var(--cream)', borderRadius: 8,
+                  padding: '0.5rem 0.85rem',
+                }}>
+                  <span className="font-sans-clean" style={{ fontSize: '0.78rem', color: 'var(--charcoal)' }}>
+                    {email}
+                  </span>
+                  <button
+                    onClick={() => removeEmail(email)}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '0.75rem', color: 'var(--mid-gray)',
+                      padding: '0 0 0 0.75rem',
+                    }}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} className="font-sans-clean" style={{
+            background: 'none', border: '1.5px solid var(--light-gray)',
+            borderRadius: 8, padding: '0.6rem 1.25rem',
+            fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase',
+            cursor: 'pointer', color: 'var(--charcoal)',
+          }}>
+            Cancel
+          </button>
+          <button onClick={save} disabled={saving} className="font-sans-clean" style={{
+            background: saving ? 'var(--mid-gray)' : 'var(--charcoal)',
+            color: 'white', border: 'none', borderRadius: 8,
+            padding: '0.6rem 1.5rem',
+            fontSize: '0.72rem', letterSpacing: '0.1em', textTransform: 'uppercase',
+            cursor: saving ? 'default' : 'pointer',
+          }}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('budget');
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [wedding, setWedding] = useState<Wedding | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [showMembers, setShowMembers] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -44,27 +232,45 @@ export default function Home() {
         return;
       }
 
-      setUserEmail(session.user.email ?? null);
+      const email = session.user.email ?? null;
+      setUserEmail(email);
 
-      // Load this user's wedding record
-      const { data: weddingData } = await supabase
+      // 1. Try as owner
+      const { data: owned } = await supabase
         .from('weddings')
         .select('*')
         .eq('owner_id', session.user.id)
-        .single();
+        .maybeSingle();
 
-      if (!weddingData) {
-        // Account exists but wedding setup isn't complete — send to signup
-        router.replace('/signup');
+      if (owned) {
+        setWeddingId(owned.id);
+        migrateLegacyLocalStorage();
+        setWedding(owned as Wedding);
+        setIsOwner(true);
+        setChecking(false);
         return;
       }
 
-      // Scope all data access to this wedding
-      setWeddingId(weddingData.id);
-      migrateLegacyLocalStorage();
+      // 2. Try as member (someone shared the wedding with this email)
+      if (email) {
+        const { data: membered } = await supabase
+          .from('weddings')
+          .select('*')
+          .contains('member_emails', [email])
+          .maybeSingle();
 
-      setWedding(weddingData as Wedding);
-      setChecking(false);
+        if (membered) {
+          setWeddingId(membered.id);
+          migrateLegacyLocalStorage();
+          setWedding(membered as Wedding);
+          setIsOwner(false);
+          setChecking(false);
+          return;
+        }
+      }
+
+      // No wedding found at all — go to signup to set one up
+      router.replace('/signup');
     });
   }, [router]);
 
@@ -94,7 +300,6 @@ export default function Home() {
     </div>
   );
 
-  // Derive display strings from wedding record
   const venueLine = [wedding?.venue_name, wedding?.venue_location]
     .filter(Boolean).join(' · ');
   const dateLine = weddingDateRange(
@@ -104,21 +309,28 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)' }}>
+      {/* Members Modal */}
+      {showMembers && wedding && (
+        <MembersModal
+          weddingId={wedding.id}
+          members={wedding.member_emails ?? []}
+          onClose={() => setShowMembers(false)}
+          onSaved={emails => setWedding(w => w ? { ...w, member_emails: emails } : w)}
+        />
+      )}
+
       {/* Villa Hero Image Header */}
       <div style={{ position: 'relative', height: 'clamp(220px, 32vw, 340px)', overflow: 'hidden' }}>
-        {/* Background photo */}
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: 'url(/villa-hero.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center 35%',
         }} />
-        {/* Gradient overlay */}
         <div style={{
           position: 'absolute', inset: 0,
           background: 'linear-gradient(180deg, rgba(15,12,8,0.25) 0%, rgba(15,10,5,0.62) 100%)',
         }} />
-        {/* Top decorative bar */}
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, height: '3px', zIndex: 2,
           background: 'linear-gradient(90deg, var(--blush), var(--champagne), var(--sage), var(--champagne), var(--blush))',
@@ -127,12 +339,12 @@ export default function Home() {
         <div style={{ position: 'absolute', top: '1.25rem', right: '2rem', zIndex: 2 }}>
           <Countdown />
         </div>
-        {/* Music player — bottom left of hero */}
+        {/* Music player — bottom left */}
         <div style={{ position: 'absolute', bottom: '1.25rem', left: '2rem', zIndex: 2 }}>
           <MusicPlayer />
         </div>
-        {/* Sign out — top left */}
-        <div style={{ position: 'absolute', top: '1.25rem', left: '2rem', zIndex: 2 }}>
+        {/* Top-left buttons: Sign Out + Members (owner only) */}
+        <div style={{ position: 'absolute', top: '1.25rem', left: '2rem', zIndex: 2, display: 'flex', gap: '0.5rem' }}>
           <button
             onClick={signOut}
             className="font-sans-clean"
@@ -147,14 +359,30 @@ export default function Home() {
           >
             Sign Out
           </button>
+          {isOwner && (
+            <button
+              onClick={() => setShowMembers(true)}
+              className="font-sans-clean"
+              title="Manage who can access this wedding"
+              style={{
+                background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.13)',
+                borderRadius: 8, padding: '0.35rem 0.75rem',
+                color: 'rgba(255,255,255,0.7)', fontSize: '0.55rem',
+                letterSpacing: '0.15em', textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >
+              Members
+            </button>
+          )}
         </div>
         {/* Centred title */}
         <div style={{
           position: 'absolute', inset: 0, zIndex: 1,
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          textAlign: 'center', color: 'white',
-          padding: '0 2rem',
+          textAlign: 'center', color: 'white', padding: '0 2rem',
         }}>
           {venueLine && (
             <p className="font-sans-clean" style={{

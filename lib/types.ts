@@ -146,6 +146,7 @@ export interface Wedding {
   venue_location: string;
   welcome_message: string;
   is_public: boolean;
+  member_emails: string[];          // other users who can access this wedding
   created_at: string;
   updated_at: string;
 }
