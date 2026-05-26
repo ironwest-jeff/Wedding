@@ -158,7 +158,7 @@ export default function GuestListTab() {
 
   function inviteUrl(inv: Invite): string {
     if (typeof window === 'undefined' || !inviteSlug) return '';
-    return `${window.location.origin}/${inviteSlug}/rsvp/${inv.code}`;
+    return `${window.location.origin}/${inviteSlug}/${inv.code}`;
   }
 
   function save(updated: Guest[]) { setGuests(updated); saveGuests(updated); }
