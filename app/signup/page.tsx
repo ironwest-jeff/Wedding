@@ -179,11 +179,23 @@ export default function SignupPage() {
             }
           </h1>
           {existingUserId && (
-            <p className="font-sans-clean" style={{
-              fontSize: '0.7rem', color: 'var(--mid-gray)', marginTop: '0.4rem',
-            }}>
-              You&apos;re signed in — just complete your wedding details below.
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginTop: '0.4rem' }}>
+              <p className="font-sans-clean" style={{ fontSize: '0.7rem', color: 'var(--mid-gray)' }}>
+                You&apos;re already signed in.
+              </p>
+              <button
+                type="button"
+                className="font-sans-clean"
+                onClick={async () => { await supabase.auth.signOut(); setExistingUserId(null); }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '0.7rem', color: 'var(--charcoal)',
+                  textDecoration: 'underline', padding: 0,
+                }}
+              >
+                Sign out
+              </button>
+            </div>
           )}
         </div>
 
