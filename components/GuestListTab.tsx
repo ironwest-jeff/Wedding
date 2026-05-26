@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getGuests, saveGuests, syncGuests } from '@/lib/store';
-import { Guest, GuestSide, RSVPStatus, DietaryRestriction, Accommodation, WeddingDay } from '@/lib/types';
+import { getGuests, saveGuests, syncGuests, getWeddingId } from '@/lib/store';
+import { Guest, GuestSide, RSVPStatus, DietaryRestriction, Accommodation, WeddingDay, RsvpSubmission } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
 
 const RSVP_STATUSES: RSVPStatus[] = ['Confirmed', 'Pending', 'Declined'];
 const DIETARY: DietaryRestriction[] = ['None', 'Vegetarian', 'Vegan', 'Gluten-Free', 'Kosher', 'Halal', 'Nut Allergy', 'Dairy-Free', 'Other'];
@@ -45,11 +46,59 @@ export default function GuestListTab() {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // RSVP inbox
+  const [inbox, setInbox] = useState<RsvpSubmission[]>([]);
+  const [inboxOpen, setInboxOpen] = useState(true);
+
   useEffect(() => {
     const local = getGuests();
     setGuests(local);
     syncGuests(local).then(fresh => setGuests(fresh));
   }, []);
+
+  useEffect(() => {
+    const weddingId = getWeddingId();
+    if (!weddingId) return;
+    supabase
+      .from('rsvp_submissions')
+      .select('*')
+      .eq('wedding_id', weddingId)
+      .eq('imported', false)
+      .order('submitted_at', { ascending: false })
+      .then(({ data }) => { if (data) setInbox(data as RsvpSubmission[]); });
+  }, []);
+
+  async function importSubmission(sub: RsvpSubmission) {
+    // Add to guest list
+    const newGuest: Guest = {
+      id: Math.random().toString(36).slice(2, 10),
+      firstName: sub.first_name,
+      lastName: sub.last_name,
+      email: sub.email || '',
+      phone: '',
+      side: 'J',
+      rsvp: sub.rsvp,
+      dietary: (sub.dietary as DietaryRestriction) || 'None',
+      dietaryNotes: sub.dietary_notes || '',
+      accommodation: 'Other',
+      accommodationNotes: '',
+      days: ['Sep 1 — Wedding Day'],
+      plusOne: '',
+      notes: sub.notes || '',
+      group: '',
+    };
+    const updated = [...guests, newGuest];
+    setGuests(updated);
+    saveGuests(updated);
+    // Mark as imported in Supabase
+    await supabase.from('rsvp_submissions').update({ imported: true }).eq('id', sub.id);
+    setInbox(prev => prev.filter(s => s.id !== sub.id));
+  }
+
+  async function dismissSubmission(id: string) {
+    await supabase.from('rsvp_submissions').update({ imported: true }).eq('id', id);
+    setInbox(prev => prev.filter(s => s.id !== id));
+  }
 
   function save(updated: Guest[]) { setGuests(updated); saveGuests(updated); }
 
@@ -99,6 +148,110 @@ export default function GuestListTab() {
 
   return (
     <div>
+      {/* ── RSVP Inbox ─────────────────────────────────────────────────────── */}
+      {inbox.length > 0 && (
+        <div style={{
+          marginBottom: '1.5rem',
+          background: 'white',
+          borderRadius: '12px',
+          border: '1.5px solid var(--blush)',
+          overflow: 'hidden',
+        }}>
+          {/* Inbox header */}
+          <button
+            onClick={() => setInboxOpen(o => !o)}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', padding: '1rem 1.25rem',
+              background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{
+                background: 'var(--blush)', color: 'var(--charcoal)',
+                borderRadius: '50%', width: 24, height: 24,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'Jost', fontSize: '0.7rem', fontWeight: 600, flexShrink: 0,
+              }}>{inbox.length}</span>
+              <span className="font-sans-clean" style={{ fontSize: '0.72rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--charcoal)', fontWeight: 600 }}>
+                New RSVPs from your wedding page
+              </span>
+            </div>
+            <span style={{ color: 'var(--mid-gray)', fontSize: '0.75rem' }}>
+              {inboxOpen ? '▲' : '▼'}
+            </span>
+          </button>
+
+          {inboxOpen && (
+            <div style={{ borderTop: '1px solid var(--light-gray)' }}>
+              {inbox.map(sub => (
+                <div key={sub.id} style={{
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'space-between', flexWrap: 'wrap',
+                  gap: '0.75rem', padding: '0.9rem 1.25rem',
+                  borderBottom: '1px solid var(--light-gray)',
+                }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.92rem', fontWeight: 500 }}>
+                        {sub.first_name} {sub.last_name}
+                      </span>
+                      <span style={{
+                        padding: '0.15rem 0.5rem', borderRadius: '4px',
+                        fontSize: '0.65rem', fontFamily: 'Jost',
+                        background: sub.rsvp === 'Confirmed' ? '#D4EDDA' : '#F8D7DA',
+                        color: sub.rsvp === 'Confirmed' ? '#276237' : '#721C24',
+                      }}>
+                        {sub.rsvp === 'Confirmed' ? '✓ Attending' : '✕ Declining'}
+                      </span>
+                      {sub.dietary && sub.dietary !== 'None' && (
+                        <span style={{ padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', fontFamily: 'Jost', background: '#E8F4F8', color: '#0C5460' }}>
+                          {sub.dietary}
+                        </span>
+                      )}
+                    </div>
+                    {sub.email && (
+                      <p style={{ fontSize: '0.72rem', color: 'var(--mid-gray)', fontFamily: 'Jost', marginTop: '0.2rem' }}>{sub.email}</p>
+                    )}
+                    {sub.notes && (
+                      <p style={{ fontSize: '0.75rem', color: 'var(--mid-gray)', marginTop: '0.25rem', fontStyle: 'italic' }}>&ldquo;{sub.notes}&rdquo;</p>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                    {sub.rsvp === 'Confirmed' && (
+                      <button
+                        onClick={() => importSubmission(sub)}
+                        style={{
+                          padding: '0.4rem 0.9rem',
+                          background: 'var(--charcoal)', color: 'white',
+                          border: 'none', borderRadius: '6px', cursor: 'pointer',
+                          fontFamily: 'Jost', fontSize: '0.7rem', letterSpacing: '0.1em',
+                          textTransform: 'uppercase', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        + Add to Guest List
+                      </button>
+                    )}
+                    <button
+                      onClick={() => dismissSubmission(sub.id)}
+                      style={{
+                        padding: '0.4rem 0.75rem',
+                        background: 'none',
+                        border: '1px solid var(--light-gray)',
+                        borderRadius: '6px', cursor: 'pointer',
+                        fontFamily: 'Jost', fontSize: '0.7rem', color: 'var(--mid-gray)',
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[

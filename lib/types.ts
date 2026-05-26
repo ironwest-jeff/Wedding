@@ -133,6 +133,21 @@ export interface TorontoChecklistItem {
   notes?: string;
 }
 
+// ── RSVP Submissions (from public guest portal) ─────────────────────
+export interface RsvpSubmission {
+  id: string;
+  wedding_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  rsvp: 'Confirmed' | 'Declined';
+  dietary: string;
+  dietary_notes: string;
+  notes: string;
+  submitted_at: string;
+  imported: boolean;
+}
+
 // ── Multi-tenant: one record per couple ────────────────────────────
 export interface Wedding {
   id: string;
