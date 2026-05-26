@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Wedding } from '@/lib/types';
+import GuestMusicPlayer from '@/components/GuestMusicPlayer';
 
 function fmtShort(d: string | null | undefined): string {
   if (!d) return '';
@@ -86,6 +87,7 @@ export default function WeddingPublicPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', fontFamily: 'Lora, Georgia, serif' }}>
+      <GuestMusicPlayer />
 
       {/* ── Hero ──────────────────────────────────────────────────────── */}
       <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>

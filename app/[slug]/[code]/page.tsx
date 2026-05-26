@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Wedding, Invite } from '@/lib/types';
+import GuestMusicPlayer from '@/components/GuestMusicPlayer';
 
 function fmtShort(d: string | null | undefined): string {
   if (!d) return '';
@@ -63,6 +64,7 @@ export default function PersonalizedWeddingPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--cream)', fontFamily: 'Lora, Georgia, serif' }}>
+      <GuestMusicPlayer />
 
       {/* ── Personalized welcome banner ───────────────────────────────── */}
       {invite && (
