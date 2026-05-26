@@ -9,24 +9,62 @@ import VillaTab from '@/components/VillaTab';
 import SeatingTab from '@/components/SeatingTab';
 import Countdown from '@/components/Countdown';
 import { supabase } from '@/lib/supabase';
+import { setWeddingId, migrateLegacyLocalStorage } from '@/lib/store';
+import { Wedding } from '@/lib/types';
 import MusicPlayer from '@/components/MusicPlayer';
 
 type Tab = 'budget' | 'guests' | 'checklist' | 'toronto' | 'villa' | 'seating';
+
+/** Format an ISO date string as "AUG 31" */
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return '';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+}
+
+/** Returns "AUG 31 – SEP 2, 2026" style range */
+function weddingDateRange(start: string | null, end: string | null): string {
+  if (!start) return '';
+  const year = new Date(start + 'T00:00:00').getFullYear();
+  if (!end) return `${fmtDate(start)}, ${year}`;
+  return `${fmtDate(start)} – ${fmtDate(end)}, ${year}`;
+}
 
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('budget');
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [wedding, setWedding] = useState<Wedding | null>(null);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         router.replace('/login');
-      } else {
-        setUserEmail(session.user.email ?? null);
-        setChecking(false);
+        return;
       }
+
+      setUserEmail(session.user.email ?? null);
+
+      // Load this user's wedding record
+      const { data: weddingData } = await supabase
+        .from('weddings')
+        .select('*')
+        .eq('owner_id', session.user.id)
+        .single();
+
+      if (!weddingData) {
+        // Account exists but wedding setup isn't complete — send to signup
+        router.replace('/signup');
+        return;
+      }
+
+      // Scope all data access to this wedding
+      setWeddingId(weddingData.id);
+      migrateLegacyLocalStorage();
+
+      setWedding(weddingData as Wedding);
+      setChecking(false);
     });
   }, [router]);
 
@@ -36,12 +74,12 @@ export default function Home() {
   }
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: 'budget', label: 'Budget', icon: '💰' },
-    { id: 'guests', label: 'Guest List', icon: '🥂' },
-    { id: 'checklist', label: 'Checklist', icon: '✓' },
-    { id: 'villa', label: 'Villa Rooms', icon: '🏡' },
-    { id: 'seating', label: 'Seating', icon: '🪑' },
-    { id: 'toronto', label: 'Toronto Wedding', icon: '⛪' },
+    { id: 'budget',    label: 'Budget',           icon: '💰' },
+    { id: 'guests',    label: 'Guest List',        icon: '🥂' },
+    { id: 'checklist', label: 'Checklist',         icon: '✓'  },
+    { id: 'villa',     label: 'Villa Rooms',       icon: '🏡' },
+    { id: 'seating',   label: 'Seating',           icon: '🪑' },
+    { id: 'toronto',   label: 'Toronto Wedding',   icon: '⛪' },
   ];
 
   if (checking) return (
@@ -54,6 +92,14 @@ export default function Home() {
         textTransform: 'uppercase', fontSize: '0.7rem',
       }}>Loading…</p>
     </div>
+  );
+
+  // Derive display strings from wedding record
+  const venueLine = [wedding?.venue_name, wedding?.venue_location]
+    .filter(Boolean).join(' · ');
+  const dateLine = weddingDateRange(
+    wedding?.wedding_date ?? null,
+    wedding?.wedding_end_date ?? null,
   );
 
   return (
@@ -110,25 +156,32 @@ export default function Home() {
           textAlign: 'center', color: 'white',
           padding: '0 2rem',
         }}>
-          <p className="font-sans-clean" style={{
-            letterSpacing: '0.35em', fontSize: '0.58rem',
-            color: 'var(--champagne)', textTransform: 'uppercase', marginBottom: '0.8rem',
-          }}>
-            Villa Valentini Bonaparte · Lazio, Italy
-          </p>
+          {venueLine && (
+            <p className="font-sans-clean" style={{
+              letterSpacing: '0.35em', fontSize: '0.58rem',
+              color: 'var(--champagne)', textTransform: 'uppercase', marginBottom: '0.8rem',
+            }}>
+              {venueLine}
+            </p>
+          )}
           <h1 className="font-display" style={{
             fontSize: 'clamp(2.4rem, 6vw, 4.5rem)', fontWeight: 300,
             lineHeight: 1.05, letterSpacing: '0.03em',
             textShadow: '0 2px 24px rgba(0,0,0,0.45)',
           }}>
-            Jeff &amp; <span style={{ fontStyle: 'italic', color: 'var(--blush)' }}>Nat</span>
+            {wedding?.partner1_name || 'Partner 1'} &amp;{' '}
+            <span style={{ fontStyle: 'italic', color: 'var(--blush)' }}>
+              {wedding?.partner2_name || 'Partner 2'}
+            </span>
           </h1>
-          <p className="font-sans-clean" style={{
-            fontSize: '0.72rem', marginTop: '0.6rem',
-            letterSpacing: '0.22em', color: 'rgba(255,255,255,0.82)',
-          }}>
-            AUG 31 – SEP 2, 2026
-          </p>
+          {dateLine && (
+            <p className="font-sans-clean" style={{
+              fontSize: '0.72rem', marginTop: '0.6rem',
+              letterSpacing: '0.22em', color: 'rgba(255,255,255,0.82)',
+            }}>
+              {dateLine}
+            </p>
+          )}
         </div>
       </div>
 
@@ -176,12 +229,12 @@ export default function Home() {
 
       {/* Content */}
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
-        {activeTab === 'budget' && <BudgetTab />}
-        {activeTab === 'guests' && <GuestListTab />}
+        {activeTab === 'budget'    && <BudgetTab />}
+        {activeTab === 'guests'    && <GuestListTab />}
         {activeTab === 'checklist' && <ChecklistTab />}
-        {activeTab === 'villa' && <VillaTab />}
-        {activeTab === 'seating' && <SeatingTab />}
-        {activeTab === 'toronto' && <TorontoTab />}
+        {activeTab === 'villa'     && <VillaTab />}
+        {activeTab === 'seating'   && <SeatingTab />}
+        {activeTab === 'toronto'   && <TorontoTab />}
       </main>
     </div>
   );

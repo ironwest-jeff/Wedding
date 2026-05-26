@@ -5,6 +5,41 @@ const DEFAULT_BUDGET_SETTINGS: BudgetSettings = { mainGuestCount: 106, poolGuest
 import { GUEST_SEED, BUDGET_SEED, VILLA_SEED, CHECKLIST_SEED } from './seedData';
 import { supabase } from './supabase';
 
+// ── Wedding ID (set once after login, scopes all data access) ─────────────────
+
+let _weddingId: string | null = null;
+
+export function setWeddingId(id: string): void { _weddingId = id; }
+export function getWeddingId(): string | null { return _weddingId; }
+
+/** Prefix a localStorage key with the current wedding ID */
+function lk(key: string): string {
+  return _weddingId ? `${_weddingId}_${key}` : key;
+}
+
+// ── One-time migration: copy unprefixed LS keys → prefixed keys ───────────────
+
+const LEGACY_KEYS = [
+  'budget_items', 'guests_v2', 'checklist_v2', 'toronto_budget',
+  'toronto_checklist', 'villa_rooms', 'toronto_guests', 'budget_settings', 'seating_v1',
+];
+
+/**
+ * Call immediately after setWeddingId() on first load.
+ * Copies any existing (un-prefixed) localStorage data into the new
+ * wedding-scoped keys so Jeff & Nat's data is preserved automatically.
+ */
+export function migrateLegacyLocalStorage(): void {
+  if (!_weddingId || typeof window === 'undefined') return;
+  for (const key of LEGACY_KEYS) {
+    const newKey = `${_weddingId}_${key}`;
+    if (!localStorage.getItem(newKey)) {
+      const old = localStorage.getItem(key);
+      if (old) localStorage.setItem(newKey, old);
+    }
+  }
+}
+
 // ── Local storage helpers ─────────────────────────────────────────────────────
 
 function getLS<T>(key: string, fallback: T): T {
@@ -22,23 +57,34 @@ export function saveLS<T>(key: string, value: T): void {
 
 // ── Supabase helpers ──────────────────────────────────────────────────────────
 
-// Push a value to Supabase (fire-and-forget — never blocks the UI)
+/**
+ * Push a value to Supabase (fire-and-forget).
+ * Scoped to the current wedding via wedding_id column.
+ */
 function sbPush(key: string, value: unknown): void {
+  if (!_weddingId) return;
   supabase
     .from('app_data')
-    .upsert({ key, value, updated_at: new Date().toISOString() })
+    .upsert(
+      { key, value, wedding_id: _weddingId, updated_at: new Date().toISOString() },
+      { onConflict: 'wedding_id,key' },
+    )
     .then();
 }
 
-// On mount: fetch the latest from Supabase.
-// • If data exists there → update local cache and return it.
-// • If it doesn't exist yet → push the current local data up (first-run seed).
+/**
+ * On mount: fetch the latest value from Supabase for this wedding.
+ * • Found → update local cache and return it.
+ * • Not found → push current local data up (first-run seed).
+ */
 async function sbSync<T>(key: string, current: T): Promise<T> {
+  if (!_weddingId) return current;
   try {
     const { data, error } = await supabase
       .from('app_data')
       .select('value')
       .eq('key', key)
+      .eq('wedding_id', _weddingId)
       .single();
 
     if (error || !data) {
@@ -48,18 +94,18 @@ async function sbSync<T>(key: string, current: T): Promise<T> {
     }
 
     const fresh = data.value as T;
-    saveLS(key, fresh);   // keep local cache in sync
+    saveLS(lk(key), fresh);   // keep local cache in sync
     return fresh;
   } catch {
-    return current;       // offline fallback — use whatever is local
+    return current;           // offline fallback — use whatever is local
   }
 }
 
 // ── Budget ────────────────────────────────────────────────────────────────────
 
-export function getBudgetItems(): BudgetItem[] { return getLS('budget_items', BUDGET_SEED); }
+export function getBudgetItems(): BudgetItem[] { return getLS(lk('budget_items'), BUDGET_SEED); }
 export function saveBudgetItems(items: BudgetItem[]) {
-  saveLS('budget_items', items);
+  saveLS(lk('budget_items'), items);
   sbPush('budget_items', items);
 }
 export async function syncBudgetItems(current: BudgetItem[]): Promise<BudgetItem[]> {
@@ -68,9 +114,9 @@ export async function syncBudgetItems(current: BudgetItem[]): Promise<BudgetItem
 
 // ── Guests ────────────────────────────────────────────────────────────────────
 
-export function getGuests(): Guest[] { return getLS('guests_v2', GUEST_SEED); }
+export function getGuests(): Guest[] { return getLS(lk('guests_v2'), GUEST_SEED); }
 export function saveGuests(guests: Guest[]) {
-  saveLS('guests_v2', guests);
+  saveLS(lk('guests_v2'), guests);
   sbPush('guests_v2', guests);
 }
 export async function syncGuests(current: Guest[]): Promise<Guest[]> {
@@ -78,11 +124,10 @@ export async function syncGuests(current: Guest[]): Promise<Guest[]> {
 }
 
 // ── Checklist ─────────────────────────────────────────────────────────────────
-// key: checklist_v2 — v2 uses CHECKLIST_SEED default (v1 key stored empty [])
 
-export function getChecklist(): ChecklistItem[] { return getLS('checklist_v2', CHECKLIST_SEED); }
+export function getChecklist(): ChecklistItem[] { return getLS(lk('checklist_v2'), CHECKLIST_SEED); }
 export function saveChecklist(items: ChecklistItem[]) {
-  saveLS('checklist_v2', items);
+  saveLS(lk('checklist_v2'), items);
   sbPush('checklist_v2', items);
 }
 export async function syncChecklist(current: ChecklistItem[]): Promise<ChecklistItem[]> {
@@ -91,9 +136,9 @@ export async function syncChecklist(current: ChecklistItem[]): Promise<Checklist
 
 // ── Toronto Budget ────────────────────────────────────────────────────────────
 
-export function getTorontoBudget(): TorontoBudgetItem[] { return getLS('toronto_budget', []); }
+export function getTorontoBudget(): TorontoBudgetItem[] { return getLS(lk('toronto_budget'), []); }
 export function saveTorontoBudget(items: TorontoBudgetItem[]) {
-  saveLS('toronto_budget', items);
+  saveLS(lk('toronto_budget'), items);
   sbPush('toronto_budget', items);
 }
 export async function syncTorontoBudget(current: TorontoBudgetItem[]): Promise<TorontoBudgetItem[]> {
@@ -102,9 +147,9 @@ export async function syncTorontoBudget(current: TorontoBudgetItem[]): Promise<T
 
 // ── Toronto Checklist ─────────────────────────────────────────────────────────
 
-export function getTorontoChecklist(): TorontoChecklistItem[] { return getLS('toronto_checklist', []); }
+export function getTorontoChecklist(): TorontoChecklistItem[] { return getLS(lk('toronto_checklist'), []); }
 export function saveTorontoChecklist(items: TorontoChecklistItem[]) {
-  saveLS('toronto_checklist', items);
+  saveLS(lk('toronto_checklist'), items);
   sbPush('toronto_checklist', items);
 }
 export async function syncTorontoChecklist(current: TorontoChecklistItem[]): Promise<TorontoChecklistItem[]> {
@@ -113,9 +158,9 @@ export async function syncTorontoChecklist(current: TorontoChecklistItem[]): Pro
 
 // ── Villa Rooms ───────────────────────────────────────────────────────────────
 
-export function getVillaRooms(): VillaRoom[] { return getLS('villa_rooms', VILLA_SEED); }
+export function getVillaRooms(): VillaRoom[] { return getLS(lk('villa_rooms'), VILLA_SEED); }
 export function saveVillaRooms(rooms: VillaRoom[]) {
-  saveLS('villa_rooms', rooms);
+  saveLS(lk('villa_rooms'), rooms);
   sbPush('villa_rooms', rooms);
 }
 export async function syncVillaRooms(current: VillaRoom[]): Promise<VillaRoom[]> {
@@ -124,20 +169,20 @@ export async function syncVillaRooms(current: VillaRoom[]): Promise<VillaRoom[]>
 
 // ── Toronto Guests ────────────────────────────────────────────────────────────
 
-export function getTorontoGuests(): TorontoGuest[] { return getLS('toronto_guests', []); }
+export function getTorontoGuests(): TorontoGuest[] { return getLS(lk('toronto_guests'), []); }
 export function saveTorontoGuests(guests: TorontoGuest[]) {
-  saveLS('toronto_guests', guests);
+  saveLS(lk('toronto_guests'), guests);
   sbPush('toronto_guests', guests);
 }
 export async function syncTorontoGuests(current: TorontoGuest[]): Promise<TorontoGuest[]> {
   return sbSync('toronto_guests', current);
 }
 
-// ── Budget Settings (guest counts + contribution targets) ─────────────────────
+// ── Budget Settings ───────────────────────────────────────────────────────────
 
-export function getBudgetSettings(): BudgetSettings { return getLS('budget_settings', DEFAULT_BUDGET_SETTINGS); }
+export function getBudgetSettings(): BudgetSettings { return getLS(lk('budget_settings'), DEFAULT_BUDGET_SETTINGS); }
 export function saveBudgetSettings(s: BudgetSettings) {
-  saveLS('budget_settings', s);
+  saveLS(lk('budget_settings'), s);
   sbPush('budget_settings', s);
 }
 export async function syncBudgetSettings(current: BudgetSettings): Promise<BudgetSettings> {
@@ -146,9 +191,9 @@ export async function syncBudgetSettings(current: BudgetSettings): Promise<Budge
 
 // ── Seating ───────────────────────────────────────────────────────────────────
 
-export function getSeating(): Record<string, string> { return getLS('seating_v1', {}); }
+export function getSeating(): Record<string, string> { return getLS(lk('seating_v1'), {}); }
 export function saveSeating(seating: Record<string, string>) {
-  saveLS('seating_v1', seating);
+  saveLS(lk('seating_v1'), seating);
   sbPush('seating_v1', seating);
 }
 export async function syncSeating(current: Record<string, string>): Promise<Record<string, string>> {

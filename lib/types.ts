@@ -124,3 +124,20 @@ export interface TorontoChecklistItem {
   dueDate?: string;
   notes?: string;
 }
+
+// ── Multi-tenant: one record per couple ────────────────────────────
+export interface Wedding {
+  id: string;
+  owner_id: string;
+  slug: string | null;
+  partner1_name: string;
+  partner2_name: string;
+  wedding_date: string | null;      // ISO date e.g. "2026-08-31"
+  wedding_end_date: string | null;  // ISO date e.g. "2026-09-02"
+  venue_name: string;
+  venue_location: string;
+  welcome_message: string;
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}

@@ -1,16 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // If already signed in, go straight to the app
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) router.replace('/');
@@ -21,38 +21,37 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const addr = email.toLowerCase().trim();
 
-    // Check against the allowed_emails table in Supabase
-    const { data } = await supabase
-      .from('allowed_emails')
-      .select('email')
-      .eq('email', addr)
-      .single();
-
-    if (!data) {
-      setError('That email isn\'t on the list. Contact Jeff or Nat to get access.');
-      setLoading(false);
-      return;
-    }
-
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: addr,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    const { error: err } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password,
     });
+
     setLoading(false);
-    if (err) setError(err.message);
-    else setSent(true);
+    if (err) {
+      setError(
+        err.message === 'Invalid login credentials'
+          ? 'Incorrect email or password — please try again.'
+          : err.message
+      );
+    } else {
+      router.replace('/');
+    }
   }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '0.75rem 1rem',
+    border: '1.5px solid var(--light-gray)',
+    borderRadius: 8, fontSize: '0.9rem',
+    outline: 'none', boxSizing: 'border-box',
+    color: 'var(--charcoal)', fontFamily: 'inherit',
+  };
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: 'var(--cream)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
+      minHeight: '100vh', background: 'var(--cream)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
       padding: '2rem',
     }}>
       {/* Decorative top bar */}
@@ -62,110 +61,97 @@ export default function LoginPage() {
       }} />
 
       <div style={{
-        background: 'white',
-        borderRadius: 16,
-        padding: '3rem 2.5rem',
-        maxWidth: 420,
-        width: '100%',
+        background: 'white', borderRadius: 16,
+        padding: '3rem 2.5rem', maxWidth: 420, width: '100%',
         boxShadow: '0 4px 40px rgba(0,0,0,0.10)',
         textAlign: 'center',
       }}>
         {/* Title */}
         <p className="font-sans-clean" style={{
-          fontSize: '0.6rem', letterSpacing: '0.35em',
+          fontSize: '0.58rem', letterSpacing: '0.35em',
           color: 'var(--champagne)', textTransform: 'uppercase', marginBottom: '0.75rem',
         }}>
-          Villa Valentini Bonaparte · Aug 31, 2026
+          Wedding Planner
         </p>
         <h1 className="font-display" style={{
           fontSize: '2.4rem', fontWeight: 300, color: 'var(--charcoal)',
           marginBottom: '0.4rem', lineHeight: 1.1,
         }}>
-          Jeff &amp; <span style={{ fontStyle: 'italic', color: 'var(--blush)' }}>Nat</span>
+          Welcome <span style={{ fontStyle: 'italic', color: 'var(--blush)' }}>back</span>
         </h1>
         <p className="font-sans-clean" style={{
           fontSize: '0.7rem', color: 'var(--mid-gray)',
           letterSpacing: '0.1em', marginBottom: '2rem',
         }}>
-          Wedding Planner
+          Sign in to your wedding dashboard
         </p>
 
-        {/* Divider */}
         <div style={{
           height: 1, background: 'var(--light-gray)',
           margin: '0 auto 2rem', width: '60%',
         }} />
 
-        {sent ? (
-          <div>
-            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✉️</div>
-            <p className="font-sans-clean" style={{
-              color: 'var(--charcoal)', fontSize: '0.9rem', lineHeight: 1.6,
-            }}>
-              Check your inbox at<br />
-              <strong>{email}</strong>
-            </p>
-            <p className="font-sans-clean" style={{
-              color: 'var(--mid-gray)', fontSize: '0.75rem',
-              marginTop: '0.75rem', lineHeight: 1.6,
-            }}>
-              Click the link in the email to sign in.<br />
-              You can close this tab.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={submit}>
-            <p className="font-sans-clean" style={{
-              fontSize: '0.75rem', color: 'var(--mid-gray)',
-              marginBottom: '1.25rem', lineHeight: 1.6,
-            }}>
-              Enter your email and we'll send you a magic link to sign in — no password needed.
-            </p>
-
+        <form onSubmit={submit} style={{ textAlign: 'left' }}>
+          <div style={{ marginBottom: '0.85rem' }}>
+            <label className="font-sans-clean" style={{
+              display: 'block', fontSize: '0.58rem', letterSpacing: '0.15em',
+              textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.4rem',
+            }}>Email</label>
             <input
-              type="email"
-              value={email}
+              type="email" required value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com"
-              required
-              className="font-sans-clean"
-              style={{
-                width: '100%', padding: '0.75rem 1rem',
-                border: '1.5px solid var(--light-gray)',
-                borderRadius: 8, fontSize: '0.9rem',
-                outline: 'none', boxSizing: 'border-box',
-                marginBottom: '1rem',
-                color: 'var(--charcoal)',
-              }}
+              className="font-sans-clean" style={inputStyle}
             />
+          </div>
 
-            {error && (
-              <p className="font-sans-clean" style={{
-                color: '#721C24', fontSize: '0.72rem',
-                background: '#F8D7DA', padding: '0.5rem 0.75rem',
-                borderRadius: 6, marginBottom: '1rem',
-              }}>
-                {error}
-              </p>
-            )}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label className="font-sans-clean" style={{
+              display: 'block', fontSize: '0.58rem', letterSpacing: '0.15em',
+              textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.4rem',
+            }}>Password</label>
+            <input
+              type="password" required value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Your password"
+              className="font-sans-clean" style={inputStyle}
+            />
+          </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="font-sans-clean"
-              style={{
-                width: '100%', padding: '0.8rem',
-                background: loading ? 'var(--mid-gray)' : 'var(--charcoal)',
-                color: 'white', border: 'none', borderRadius: 8,
-                fontSize: '0.75rem', letterSpacing: '0.15em',
-                textTransform: 'uppercase', cursor: loading ? 'default' : 'pointer',
-                transition: 'background 0.2s',
-              }}
-            >
-              {loading ? 'Sending…' : 'Send Magic Link'}
-            </button>
-          </form>
-        )}
+          {error && (
+            <p className="font-sans-clean" style={{
+              color: '#721C24', fontSize: '0.72rem',
+              background: '#F8D7DA', padding: '0.5rem 0.75rem',
+              borderRadius: 6, marginBottom: '1rem',
+            }}>
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit" disabled={loading}
+            className="font-sans-clean"
+            style={{
+              width: '100%', padding: '0.8rem',
+              background: loading ? 'var(--mid-gray)' : 'var(--charcoal)',
+              color: 'white', border: 'none', borderRadius: 8,
+              fontSize: '0.75rem', letterSpacing: '0.15em',
+              textTransform: 'uppercase', cursor: loading ? 'default' : 'pointer',
+              transition: 'background 0.2s',
+            }}
+          >
+            {loading ? 'Signing in…' : 'Sign In'}
+          </button>
+        </form>
+
+        <p className="font-sans-clean" style={{
+          marginTop: '1.5rem', fontSize: '0.7rem', color: 'var(--mid-gray)',
+        }}>
+          New here?{' '}
+          <Link href="/signup" style={{ color: 'var(--charcoal)', fontWeight: 600 }}>
+            Create your wedding
+          </Link>
+        </p>
       </div>
     </div>
   );
