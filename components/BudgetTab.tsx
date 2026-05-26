@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { getBudgetItems, saveBudgetItems, syncBudgetItems, getBudgetSettings, saveBudgetSettings, syncBudgetSettings } from '@/lib/store';
-import { BudgetItem, Payment, WeddingDay, Payer, PayStatus, BudgetSettings } from '@/lib/types';
+import { BudgetItem, Payment, WeddingDay, PayStatus, BudgetSettings, Contributor } from '@/lib/types';
 
 const DAY_ORDER: WeddingDay[] = ['All Days', 'Aug 31 — Welcome Dinner', 'Sep 1 — Wedding Day', 'Sep 2 — Pool Party', 'Sep 3 — Checkout', 'N/A'];
 const DAY_LABELS: Record<WeddingDay, string> = {
@@ -13,15 +13,10 @@ const DAY_LABELS: Record<WeddingDay, string> = {
   'N/A': 'N/A',
 };
 const DAYS: WeddingDay[] = ['Aug 31 — Welcome Dinner', 'Sep 1 — Wedding Day', 'Sep 2 — Pool Party', 'Sep 3 — Checkout', 'All Days', 'N/A'];
-const PAYERS: Payer[] = ['Nat/Jeff', 'Mike', 'Tony', 'Shared', 'Vendor'];
-const PAYMENT_PAYERS = ['Jeff', 'Nat', 'Mike', 'Tony', 'Shared', 'Other'];
 const STATUSES: PayStatus[] = ['Pending', 'Deposit Paid', 'Paid'];
 const CATEGORIES = ['Venue', 'Catering & Bar', 'Photography', 'Music & DJ', 'Flowers & Decor', 'Attire', 'Hair & Makeup', 'Transportation', 'Accommodation', 'Invitations & Stationery', 'Favors & Gifts', 'Officiant', 'Rings', 'Entertainment', 'Other'];
+const CONTRIB_COLORS = ['#8B9E88', '#C9A96E', '#C9897A', '#B5A4C9', '#9B8EA0', '#7BADC9', '#C9B87A', '#8BAFC9'];
 
-const PAYER_COLORS: Record<Payer, string> = {
-  'Nat/Jeff': 'var(--sage)', 'Mike': 'var(--champagne)', 'Tony': 'var(--dusty-rose)',
-  'Shared': 'var(--mid-gray)', 'Vendor': '#9B8EA0',
-};
 const DAY_COLORS: Record<WeddingDay, string> = {
   'Aug 31 — Welcome Dinner': '#C9897A', 'Sep 1 — Wedding Day': '#C9A96E',
   'Sep 2 — Pool Party': '#8B9E88', 'Sep 3 — Checkout': '#9B8EA0',
@@ -39,52 +34,92 @@ function fmtDate(d: string) { return d ? new Date(d + 'T00:00:00').toLocaleDateS
 function genId() { return Math.random().toString(36).slice(2, 10); }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 
-const EMPTY: Omit<BudgetItem, 'id'> = {
+// ── Migrate old settings format (jeffNatTarget/mikeTarget → contributors) ─────
+function normalizeSettings(s: unknown): BudgetSettings {
+  const raw = s as Record<string, unknown> | null | undefined;
+  if (!raw) return { mainGuestCount: 100, poolGuestCount: 50, contributors: [] };
+  if (Array.isArray(raw.contributors)) return raw as unknown as BudgetSettings;
+  // Old format — auto-migrate
+  return {
+    mainGuestCount: (raw.mainGuestCount as number) ?? 106,
+    poolGuestCount: (raw.poolGuestCount as number) ?? 60,
+    contributors: [
+      { id: 'jn',   name: 'Jeff & Nat', type: 'fixed',     target: (raw.jeffNatTarget as number) ?? 18000, color: CONTRIB_COLORS[0], payerNames: ['Jeff', 'Nat', 'Nat/Jeff'] },
+      { id: 'mike', name: 'Mike',       type: 'fixed',     target: (raw.mikeTarget as number) ?? 10000,   color: CONTRIB_COLORS[1], payerNames: ['Mike'] },
+      { id: 'tony', name: 'Tony',       type: 'remaining',                                                 color: CONTRIB_COLORS[2], payerNames: ['Tony'] },
+    ],
+  };
+}
+
+const EMPTY_ITEM = (contribs: Contributor[]): Omit<BudgetItem, 'id'> => ({
   category: 'Venue', description: '', vendor: '', day: 'Sep 1 — Wedding Day',
-  totalAmount: 0, paidBy: 'Nat/Jeff', status: 'Pending', notes: '', dueDate: '', payments: [],
-};
-const EMPTY_PAY = { amount: '', paidBy: 'Jeff', date: todayStr(), note: '', isCash: false };
+  totalAmount: 0, paidBy: contribs[0]?.name ?? '', status: 'Pending', notes: '', dueDate: '', payments: [],
+});
+const EMPTY_PAY = { amount: '', paidBy: '', date: todayStr(), note: '', isCash: false };
+const EMPTY_CONTRIB = (): Omit<Contributor, 'id'> => ({
+  name: '', type: 'fixed', target: 0, color: CONTRIB_COLORS[0], payerNames: [],
+});
 
 export default function BudgetTab() {
-  const [items, setItems]             = useState<BudgetItem[]>([]);
-  const [mainGuestCount, setMainGuest] = useState(106);
-  const [poolGuestCount, setPoolGuest] = useState(60);
-  const [jeffNatTarget, setJNTarget]  = useState(18000);
-  const [mikeTarget, setMikeTarget]   = useState(10000);
-  const [showForm, setShowForm]       = useState(false);
-  const [editing, setEditing]         = useState<BudgetItem | null>(null);
-  const [form, setForm]               = useState<Omit<BudgetItem, 'id'>>(EMPTY);
-  const [filterDay, setFilterDay]     = useState<WeddingDay | 'All'>('All');
-  const [filterPayer, setFilterPayer] = useState<Payer | 'All'>('All');
+  const [items, setItems]               = useState<BudgetItem[]>([]);
+  const [mainGuestCount, setMainGuest]  = useState(100);
+  const [poolGuestCount, setPoolGuest]  = useState(50);
+  const [contributors, setContributors] = useState<Contributor[]>([]);
+  const [showForm, setShowForm]         = useState(false);
+  const [editing, setEditing]           = useState<BudgetItem | null>(null);
+  const [form, setForm]                 = useState<Omit<BudgetItem, 'id'>>(EMPTY_ITEM([]));
+  const [filterDay, setFilterDay]       = useState<WeddingDay | 'All'>('All');
+  const [filterPayer, setFilterPayer]   = useState<string>('All');
   const [filterStatus, setFilterStatus] = useState<PayStatus | 'All'>('All');
-  const [hideAmounts, setHideAmounts] = useState(false);
-  const [expandedId, setExpandedId]   = useState<string | null>(null);
-  const [taxOpenId, setTaxOpenId]     = useState<string | null>(null);
+  const [hideAmounts, setHideAmounts]   = useState(false);
+  const [expandedId, setExpandedId]     = useState<string | null>(null);
+  const [taxOpenId, setTaxOpenId]       = useState<string | null>(null);
   const [payingItemId, setPayingItemId] = useState<string | null>(null);
-  const [payForm, setPayForm]         = useState(EMPTY_PAY);
+  const [payForm, setPayForm]           = useState(EMPTY_PAY);
+  // Contributor form
+  const [showContribForm, setShowContribForm]   = useState(false);
+  const [editingContrib, setEditingContrib]     = useState<Contributor | null>(null);
+  const [contribForm, setContribForm]           = useState<Omit<Contributor, 'id'>>(EMPTY_CONTRIB());
 
   const mask = (n: number) => hideAmounts ? '••••••' : fmt(n);
+
+  // Dynamic payer lists derived from contributors
+  const payerNames      = contributors.map(c => c.name);
+  const paymentPayers   = [
+    ...Array.from(new Set(contributors.flatMap(c => c.payerNames.length ? c.payerNames : [c.name]))),
+    'Other',
+  ];
+
+  function colorForPayer(name: string): string {
+    const c = contributors.find(c => c.name === name || c.payerNames.includes(name));
+    return c?.color ?? 'var(--mid-gray)';
+  }
 
   useEffect(() => {
     const local = getBudgetItems();
     setItems(local);
     syncBudgetItems(local).then(fresh => setItems(fresh));
 
-    const s = getBudgetSettings();
-    setMainGuest(s.mainGuestCount);
-    setPoolGuest(s.poolGuestCount);
-    setJNTarget(s.jeffNatTarget);
-    setMikeTarget(s.mikeTarget);
-    syncBudgetSettings(s).then(fresh => {
-      setMainGuest(fresh.mainGuestCount);
-      setPoolGuest(fresh.poolGuestCount);
-      setJNTarget(fresh.jeffNatTarget);
-      setMikeTarget(fresh.mikeTarget);
+    const rawSettings = getBudgetSettings();
+    const norm = normalizeSettings(rawSettings);
+    setMainGuest(norm.mainGuestCount);
+    setPoolGuest(norm.poolGuestCount);
+    setContributors(norm.contributors);
+
+    syncBudgetSettings(rawSettings).then(fresh => {
+      const freshNorm = normalizeSettings(fresh);
+      setMainGuest(freshNorm.mainGuestCount);
+      setPoolGuest(freshNorm.poolGuestCount);
+      setContributors(freshNorm.contributors);
+      // Persist migrated format back to Supabase if it was old format
+      if (!(fresh as unknown as Record<string, unknown>)?.contributors) {
+        saveBudgetSettings(freshNorm);
+      }
     });
   }, []);
 
-  function persistSettings(updates: Partial<BudgetSettings>) {
-    const s: BudgetSettings = { mainGuestCount, poolGuestCount, jeffNatTarget: jeffNatTarget, mikeTarget, ...updates };
+  function persistSettings(updates: Partial<{ mainGuestCount: number; poolGuestCount: number; contributors: Contributor[] }>) {
+    const s: BudgetSettings = { mainGuestCount, poolGuestCount, contributors, ...updates };
     saveBudgetSettings(s);
   }
 
@@ -103,19 +138,16 @@ export default function BudgetTab() {
     if (!form.description) return;
     const isVar = !!(form.isVariable && form.perPersonRate && form.perPersonRate > 0);
     if (!isVar && form.totalAmount <= 0) return;
-
     const computedTotal = isVar
       ? Math.round((form.perPersonRate ?? 0) * (1 + (form.variableTaxRate ?? 0) / 100) * (form.variableGuestType === 'pool' ? poolGuestCount : mainGuestCount))
       : form.totalAmount;
-
     const itemToSave = { ...form, totalAmount: computedTotal };
-
     if (editing) {
       save(items.map(i => i.id === editing.id ? { ...itemToSave, id: editing.id, payments: i.payments ?? [] } : i));
     } else {
       save([...items, { ...itemToSave, id: genId(), payments: [] }]);
     }
-    setForm(EMPTY); setEditing(null); setShowForm(false);
+    setForm(EMPTY_ITEM(contributors)); setEditing(null); setShowForm(false);
   }
 
   function deleteItem(id: string) {
@@ -131,7 +163,7 @@ export default function BudgetTab() {
   function openPayment(itemId: string, isCash: boolean) {
     setExpandedId(itemId);
     setPayingItemId(itemId);
-    setPayForm({ ...EMPTY_PAY, isCash, date: todayStr() });
+    setPayForm({ ...EMPTY_PAY, paidBy: paymentPayers[0] ?? '', isCash, date: todayStr() });
   }
 
   function addPayment(itemId: string) {
@@ -140,7 +172,7 @@ export default function BudgetTab() {
     const p: Payment = { id: genId(), amount, paidBy: payForm.paidBy, date: payForm.date, note: payForm.note, isCash: payForm.isCash };
     save(items.map(i => i.id === itemId ? { ...i, payments: [...(i.payments ?? []), p] } : i));
     setPayingItemId(null);
-    setPayForm(EMPTY_PAY);
+    setPayForm({ ...EMPTY_PAY, paidBy: paymentPayers[0] ?? '' });
   }
 
   function removePayment(itemId: string, payId: string) {
@@ -152,20 +184,63 @@ export default function BudgetTab() {
     save(items.map(i => i.id === itemId ? { ...i, taxRate: r } : i));
   }
 
-  // ── Summaries ──────────────────────────────────────────────────────────────
+  // ── Contributor CRUD ──────────────────────────────────────────────────────────
+  function openAddContrib() {
+    const nextColor = CONTRIB_COLORS[contributors.length % CONTRIB_COLORS.length];
+    setContribForm({ ...EMPTY_CONTRIB(), color: nextColor });
+    setEditingContrib(null);
+    setShowContribForm(true);
+  }
+
+  function openEditContrib(c: Contributor) {
+    setContribForm({ name: c.name, type: c.type, target: c.target, color: c.color, payerNames: c.payerNames });
+    setEditingContrib(c);
+    setShowContribForm(true);
+  }
+
+  function saveContributor() {
+    if (!contribForm.name.trim()) return;
+    const contrib: Contributor = {
+      id: editingContrib?.id ?? genId(),
+      name: contribForm.name.trim(),
+      type: contribForm.type,
+      target: contribForm.type === 'fixed' ? (contribForm.target ?? 0) : undefined,
+      color: contribForm.color,
+      payerNames: contribForm.payerNames.length ? contribForm.payerNames : [contribForm.name.trim()],
+    };
+    const updated = editingContrib
+      ? contributors.map(c => c.id === editingContrib.id ? contrib : c)
+      : [...contributors, contrib];
+    setContributors(updated);
+    persistSettings({ contributors: updated });
+    setShowContribForm(false);
+    setEditingContrib(null);
+  }
+
+  function deleteContributor(id: string) {
+    if (!confirm('Remove this contributor?')) return;
+    const updated = contributors.filter(c => c.id !== id);
+    setContributors(updated);
+    persistSettings({ contributors: updated });
+  }
+
+  // ── Summaries ─────────────────────────────────────────────────────────────────
   const totalBudget    = items.reduce((s, i) => s + effectiveAmount(i), 0);
   const totalPaid      = items.reduce((s, i) => s + (i.payments ?? []).reduce((ps, p) => ps + p.amount, 0), 0);
   const totalCash      = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.isCash).reduce((ps, p) => ps + p.amount, 0), 0);
   const totalRemaining = Math.max(0, totalBudget - totalPaid);
 
-  const actualJeffNat = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.paidBy === 'Jeff' || p.paidBy === 'Nat').reduce((ps, p) => ps + p.amount, 0), 0);
-  const actualMike    = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.paidBy === 'Mike').reduce((ps, p) => ps + p.amount, 0), 0);
-  const actualOther   = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.paidBy === 'Other' || p.paidBy === 'Shared').reduce((ps, p) => ps + p.amount, 0), 0);
-  const actualTony    = items.reduce((s, i) => s + (i.payments ?? []).filter(p => p.paidBy === 'Tony').reduce((ps, p) => ps + p.amount, 0), 0);
-  // Tony's target = whatever is left after Jeff/Nat target, Mike target, and any Other/Shared payments
-  const tonyTarget    = Math.max(0, totalBudget - jeffNatTarget - mikeTarget - actualOther);
+  function actualForContributor(c: Contributor): number {
+    const matchNames = new Set([c.name, ...c.payerNames]);
+    return items.reduce((s, i) => s + (i.payments ?? []).filter(p => matchNames.has(p.paidBy)).reduce((ps, p) => ps + p.amount, 0), 0);
+  }
 
-  // ── Filtering & grouping by day ────────────────────────────────────────────
+  const allContribNames = new Set(contributors.flatMap(c => [c.name, ...c.payerNames]));
+  const miscPaid = items.reduce((s, i) => s + (i.payments ?? []).filter(p => !allContribNames.has(p.paidBy)).reduce((ps, p) => ps + p.amount, 0), 0);
+  const fixedTargetTotal = contributors.filter(c => c.type === 'fixed').reduce((s, c) => s + (c.target ?? 0), 0);
+  const remainingTarget  = Math.max(0, totalBudget - fixedTargetTotal - miscPaid);
+
+  // ── Filtering ─────────────────────────────────────────────────────────────────
   const filtered = items
     .filter(i => filterDay === 'All' || i.day === filterDay)
     .filter(i => filterPayer === 'All' || i.paidBy === filterPayer)
@@ -177,14 +252,13 @@ export default function BudgetTab() {
   DAY_ORDER.forEach(d => { byDay[d].sort((a, b) => effectiveAmount(b) - effectiveAmount(a)); });
   const activeDays = DAY_ORDER.filter(d => byDay[d].length > 0);
 
-  // ── Shared styles ──────────────────────────────────────────────────────────
+  // ── Shared styles ─────────────────────────────────────────────────────────────
   const card: React.CSSProperties = { background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid var(--light-gray)' };
   const inputStyle: React.CSSProperties = { width: '100%', padding: '0.6rem 0.8rem', border: '1px solid var(--light-gray)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'Jost, sans-serif', background: 'var(--warm-white)', color: 'var(--charcoal)', outline: 'none' };
   const miniInput: React.CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '6px', fontSize: '0.78rem', fontFamily: 'Jost', background: 'var(--warm-white)', color: 'var(--charcoal)', outline: 'none' };
   const labelSm: React.CSSProperties = { display: 'block', fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.25rem', fontFamily: 'Jost' };
   const actionBtn: React.CSSProperties = { padding: '0.25rem 0.5rem', border: '1px solid var(--light-gray)', borderRadius: '5px', cursor: 'pointer', background: 'white', fontSize: '0.68rem', fontFamily: 'Jost', color: 'var(--charcoal)', whiteSpace: 'nowrap' };
 
-  // Form preview for variable item
   const formIsVar = !!(form.isVariable && form.perPersonRate && form.perPersonRate > 0);
   const formPreview = formIsVar
     ? Math.round((form.perPersonRate ?? 0) * (1 + (form.variableTaxRate ?? 0) / 100) * (form.variableGuestType === 'pool' ? poolGuestCount : mainGuestCount))
@@ -203,10 +277,10 @@ export default function BudgetTab() {
       {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Total Budget',  value: mask(totalBudget),    accent: 'var(--charcoal)' },
-          { label: 'Total Paid',    value: mask(totalPaid),       accent: 'var(--deep-sage)' },
-          { label: 'Remaining',     value: mask(totalRemaining),  accent: 'var(--dusty-rose)' },
-          { label: '💵 Cash Paid',  value: mask(totalCash),       accent: 'var(--deep-champagne)' },
+          { label: 'Total Budget', value: mask(totalBudget),   accent: 'var(--charcoal)' },
+          { label: 'Total Paid',   value: mask(totalPaid),     accent: 'var(--deep-sage)' },
+          { label: 'Remaining',    value: mask(totalRemaining), accent: 'var(--dusty-rose)' },
+          { label: '💵 Cash Paid', value: mask(totalCash),     accent: 'var(--deep-champagne)' },
         ].map(s => (
           <div key={s.label} style={{ ...card, padding: '1.25rem' }}>
             <p className="font-sans-clean" style={{ fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--mid-gray)', marginBottom: '0.5rem' }}>{s.label}</p>
@@ -236,108 +310,113 @@ export default function BudgetTab() {
         </div>
       </div>
 
-      {/* Contribution dashboard */}
+      {/* ── Contribution Dashboard ─────────────────────────────────────────────── */}
       <div style={{ ...card, marginBottom: '1.5rem' }}>
-        <h2 className="font-display" style={{ fontSize: '1.3rem', marginBottom: '1rem', fontWeight: 400 }}>Contribution Dashboard</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 className="font-display" style={{ fontSize: '1.3rem', fontWeight: 400 }}>Contribution Dashboard</h2>
+          <button onClick={openAddContrib} className="font-sans-clean"
+            style={{ padding: '0.3rem 0.75rem', background: 'var(--charcoal)', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            + Add
+          </button>
+        </div>
 
-          {/* Other — no fixed target, reduces Tony's balance */}
-          {actualOther > 0 && (
-            <div style={{ background: 'var(--cream)', borderRadius: '10px', padding: '1rem', border: '1px dashed #C8BFC8' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color: '#9B8EA0' }}>Guest Room Payments</span>
-                <span className="font-sans-clean" style={{ fontSize: '0.6rem', color: 'var(--mid-gray)', fontStyle: 'italic' }}>no fixed amount</span>
-              </div>
-              <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.15rem' }}>{mask(actualOther)}</div>
-              <div className="font-sans-clean" style={{ fontSize: '0.68rem', color: 'var(--mid-gray)' }}>
-                paid · reduces Tony&apos;s balance
-              </div>
-            </div>
-          )}
+        {contributors.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--mid-gray)' }}>
+            <p className="font-sans-clean" style={{ fontSize: '0.8rem', marginBottom: '0.75rem' }}>No contributors yet</p>
+            <button onClick={openAddContrib} className="font-sans-clean"
+              style={{ padding: '0.5rem 1.25rem', background: 'var(--cream)', border: '1px dashed var(--mid-gray)', borderRadius: 8, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--charcoal)' }}>
+              + Add your first contributor
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
 
-          {/* Jeff & Nat, Mike — editable targets */}
-          {[
-            { key: 'jn',   label: 'Jeff & Nat', target: jeffNatTarget, actual: actualJeffNat, color: 'var(--sage)' },
-            { key: 'mike', label: 'Mike',        target: mikeTarget,    actual: actualMike,    color: 'var(--champagne)' },
-          ].map(({ key, label, target, actual, color }) => {
-            const pct = target > 0 ? Math.min(100, (actual / target) * 100) : 0;
-            return (
-              <div key={key} style={{ background: 'var(--cream)', borderRadius: '10px', padding: '1rem' }}>
+            {/* Miscellaneous / unattributed payments — shown if > 0 */}
+            {miscPaid > 0 && (
+              <div style={{ background: 'var(--cream)', borderRadius: '10px', padding: '1rem', border: '1px dashed #C8BFC8' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                  <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color }}>{label}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--mid-gray)', fontFamily: 'Jost' }}>€</span>
-                    <input
-                      type="number" min="0" step="1000"
-                      value={key === 'jn' ? jeffNatTarget : mikeTarget}
-                      onChange={e => {
-                        const v = parseInt(e.target.value) || 0;
-                        if (key === 'jn') { setJNTarget(v); persistSettings({ jeffNatTarget: v }); }
-                        else              { setMikeTarget(v); persistSettings({ mikeTarget: v }); }
-                      }}
-                      style={{ ...miniInput, width: 80, textAlign: 'right' }}
-                    />
+                  <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color: '#9B8EA0' }}>Other Payments</span>
+                  <span className="font-sans-clean" style={{ fontSize: '0.6rem', color: 'var(--mid-gray)', fontStyle: 'italic' }}>unattributed</span>
+                </div>
+                <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.15rem' }}>{mask(miscPaid)}</div>
+                <div className="font-sans-clean" style={{ fontSize: '0.68rem', color: 'var(--mid-gray)' }}>reduces remaining balance</div>
+              </div>
+            )}
+
+            {contributors.map(c => {
+              const actual = actualForContributor(c);
+              const target = c.type === 'fixed' ? (c.target ?? 0) : remainingTarget;
+              const pct    = target > 0 ? Math.min(100, (actual / target) * 100) : 0;
+              return (
+                <div key={c.id} style={{ background: 'var(--cream)', borderRadius: '10px', padding: '1rem', position: 'relative' }}>
+                  {/* Edit / delete */}
+                  <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem' }}>
+                    <button onClick={() => openEditContrib(c)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--mid-gray)', padding: '0.1rem 0.25rem' }}>✎</button>
+                    <button onClick={() => deleteContributor(c.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--dusty-rose)', padding: '0.1rem 0.25rem' }}>✕</button>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', paddingRight: '2.5rem' }}>
+                    <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color: c.color }}>{c.name}</span>
+                    {c.type === 'fixed' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--mid-gray)', fontFamily: 'Jost' }}>€</span>
+                        <input type="number" min="0" step="1000" value={c.target ?? 0}
+                          onChange={e => {
+                            const v = parseInt(e.target.value) || 0;
+                            const updated = contributors.map(x => x.id === c.id ? { ...x, target: v } : x);
+                            setContributors(updated);
+                            persistSettings({ contributors: updated });
+                          }}
+                          style={{ ...miniInput, width: 80, textAlign: 'right' }} />
+                      </div>
+                    ) : (
+                      <span className="font-sans-clean" style={{ fontSize: '0.78rem', color: 'var(--mid-gray)' }}>
+                        {mask(remainingTarget)} <span style={{ fontSize: '0.6rem' }}>(auto)</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.15rem' }}>{mask(actual)}</div>
+                  <div className="font-sans-clean" style={{ fontSize: '0.68rem', color: 'var(--mid-gray)' }}>
+                    paid · {mask(Math.max(0, target - actual))} remaining
+                  </div>
+                  <div style={{ marginTop: '0.5rem', height: '4px', background: 'var(--light-gray)', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: c.color, borderRadius: '2px', transition: 'width 0.5s' }} />
                   </div>
                 </div>
-                <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.15rem' }}>{mask(actual)}</div>
-                <div className="font-sans-clean" style={{ fontSize: '0.68rem', color: 'var(--mid-gray)' }}>
-                  paid · {mask(Math.max(0, target - actual))} remaining
-                </div>
-                <div style={{ marginTop: '0.5rem', height: '4px', background: 'var(--light-gray)', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 0.5s' }} />
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Tony — auto (remainder after Jeff/Nat + Mike targets + Other paid) */}
-          {(() => {
-            const pct = tonyTarget > 0 ? Math.min(100, (actualTony / tonyTarget) * 100) : 0;
-            return (
-              <div style={{ background: 'var(--cream)', borderRadius: '10px', padding: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                  <span className="font-sans-clean" style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--dusty-rose)' }}>Tony</span>
-                  <span className="font-sans-clean" style={{ fontSize: '0.78rem', color: 'var(--mid-gray)' }}>
-                    {hideAmounts ? '••••••' : fmt(tonyTarget)} <span style={{ fontSize: '0.6rem' }}>(auto)</span>
-                  </span>
-                </div>
-                <div className="font-display" style={{ fontSize: '1.3rem', marginBottom: '0.15rem' }}>{mask(actualTony)}</div>
-                <div className="font-sans-clean" style={{ fontSize: '0.68rem', color: 'var(--mid-gray)' }}>
-                  paid · {mask(Math.max(0, tonyTarget - actualTony))} remaining
-                </div>
-                <div style={{ marginTop: '0.5rem', height: '4px', background: 'var(--light-gray)', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: 'var(--dusty-rose)', borderRadius: '2px', transition: 'width 0.5s' }} />
-                </div>
-              </div>
-            );
-          })()}
-
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Controls */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <select value={filterDay} onChange={e => setFilterDay(e.target.value as any)} style={{ ...inputStyle, width: 'auto', padding: '0.5rem 0.8rem' }}>
+          <select value={filterDay} onChange={e => setFilterDay(e.target.value as WeddingDay | 'All')} style={{ ...inputStyle, width: 'auto', padding: '0.5rem 0.8rem' }}>
             <option value="All">All Days</option>
             {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
-          <select value={filterPayer} onChange={e => setFilterPayer(e.target.value as any)} style={{ ...inputStyle, width: 'auto', padding: '0.5rem 0.8rem' }}>
+          <select value={filterPayer} onChange={e => setFilterPayer(e.target.value)} style={{ ...inputStyle, width: 'auto', padding: '0.5rem 0.8rem' }}>
             <option value="All">All Payers</option>
-            {PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
+            {payerNames.map(p => <option key={p} value={p}>{p}</option>)}
+            <option value="Vendor">Vendor</option>
+            <option value="Shared">Shared</option>
           </select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} style={{ ...inputStyle, width: 'auto', padding: '0.5rem 0.8rem' }}>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as PayStatus | 'All')} style={{ ...inputStyle, width: 'auto', padding: '0.5rem 0.8rem' }}>
             <option value="All">All Statuses</option>
             {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-        <button onClick={() => { setForm(EMPTY); setEditing(null); setShowForm(true); }}
+        <button onClick={() => { setForm(EMPTY_ITEM(contributors)); setEditing(null); setShowForm(true); }}
           style={{ padding: '0.65rem 1.5rem', background: 'var(--charcoal)', color: 'var(--cream)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.8rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
           + Add Item
         </button>
       </div>
 
-      {/* Add / Edit modal */}
+      {/* ── Add/Edit budget item modal ─────────────────────────────────────────── */}
       {showForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '5rem 1rem 2rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
           <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '100%', maxWidth: '580px', margin: 'auto', flexShrink: 0 }}>
@@ -365,8 +444,10 @@ export default function BudgetTab() {
               </div>
               <div>
                 <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Responsible Payer</label>
-                <select style={inputStyle} value={form.paidBy} onChange={e => setForm(f => ({ ...f, paidBy: e.target.value as Payer }))}>
-                  {PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
+                <select style={inputStyle} value={form.paidBy} onChange={e => setForm(f => ({ ...f, paidBy: e.target.value }))}>
+                  {payerNames.map(p => <option key={p} value={p}>{p}</option>)}
+                  <option value="Vendor">Vendor</option>
+                  <option value="Shared">Shared</option>
                 </select>
               </div>
               <div>
@@ -380,7 +461,7 @@ export default function BudgetTab() {
                 <input style={inputStyle} type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
               </div>
 
-              {/* Variable pricing toggle */}
+              {/* Variable pricing */}
               <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0' }}>
                 <input type="checkbox" id="varCheck" checked={!!form.isVariable}
                   onChange={e => setForm(f => ({ ...f, isVariable: e.target.checked }))}
@@ -392,7 +473,6 @@ export default function BudgetTab() {
 
               {form.isVariable ? (
                 <>
-                  {/* Guest type selector — shown first and prominently */}
                   <div style={{ gridColumn: '1/-1' }}>
                     <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.5rem' }}>Based on which guest count?</label>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -404,14 +484,7 @@ export default function BudgetTab() {
                         return (
                           <button key={opt.value} type="button"
                             onClick={() => setForm(f => ({ ...f, variableGuestType: opt.value }))}
-                            style={{
-                              flex: 1, padding: '0.7rem 1rem', borderRadius: '10px', cursor: 'pointer',
-                              border: `2px solid ${sel ? 'var(--charcoal)' : 'var(--light-gray)'}`,
-                              background: sel ? 'var(--charcoal)' : 'white',
-                              color: sel ? 'white' : 'var(--charcoal)',
-                              textAlign: 'center', fontFamily: 'Jost',
-                              transition: 'all 0.15s',
-                            }}>
+                            style={{ flex: 1, padding: '0.7rem 1rem', borderRadius: '10px', cursor: 'pointer', border: `2px solid ${sel ? 'var(--charcoal)' : 'var(--light-gray)'}`, background: sel ? 'var(--charcoal)' : 'white', color: sel ? 'white' : 'var(--charcoal)', textAlign: 'center', fontFamily: 'Jost', transition: 'all 0.15s' }}>
                             <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{opt.label}</div>
                             <div style={{ fontSize: '0.7rem', opacity: 0.75, marginTop: '0.15rem' }}>{opt.sub}</div>
                           </button>
@@ -421,17 +494,11 @@ export default function BudgetTab() {
                   </div>
                   <div>
                     <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Per-person Rate (€) *</label>
-                    <input style={inputStyle} type="number" min="0" step="0.01"
-                      value={form.perPersonRate ?? ''}
-                      onChange={e => setForm(f => ({ ...f, perPersonRate: parseFloat(e.target.value) || undefined }))}
-                      placeholder="e.g. 140" />
+                    <input style={inputStyle} type="number" min="0" step="0.01" value={form.perPersonRate ?? ''} onChange={e => setForm(f => ({ ...f, perPersonRate: parseFloat(e.target.value) || undefined }))} placeholder="e.g. 140" />
                   </div>
                   <div>
                     <label className="font-sans-clean" style={{ fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--mid-gray)', display: 'block', marginBottom: '0.3rem' }}>Tax Rate (%)</label>
-                    <input style={inputStyle} type="number" min="0" max="100" step="0.5"
-                      value={form.variableTaxRate ?? ''}
-                      onChange={e => setForm(f => ({ ...f, variableTaxRate: parseFloat(e.target.value) || undefined }))}
-                      placeholder="e.g. 10" />
+                    <input style={inputStyle} type="number" min="0" max="100" step="0.5" value={form.variableTaxRate ?? ''} onChange={e => setForm(f => ({ ...f, variableTaxRate: parseFloat(e.target.value) || undefined }))} placeholder="e.g. 10" />
                   </div>
                   {formIsVar && (
                     <div style={{ gridColumn: '1/-1', background: '#F0FFF4', border: '1px solid #C6F6D5', borderRadius: 8, padding: '0.6rem 0.85rem', fontSize: '0.78rem', fontFamily: 'Jost' }}>
@@ -465,6 +532,79 @@ export default function BudgetTab() {
         </div>
       )}
 
+      {/* ── Add/Edit contributor modal ─────────────────────────────────────────── */}
+      {showContribForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, overflowY: 'auto', padding: '5rem 1rem 2rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+          <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', width: '100%', maxWidth: '420px', margin: 'auto', flexShrink: 0 }}>
+            <h2 className="font-display" style={{ fontSize: '1.4rem', marginBottom: '1.5rem', fontWeight: 400 }}>
+              {editingContrib ? 'Edit Contributor' : 'Add Contributor'}
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* Name */}
+              <div>
+                <label className="font-sans-clean" style={{ ...labelSm, marginBottom: '0.4rem' }}>Name</label>
+                <input style={inputStyle} value={contribForm.name}
+                  onChange={e => setContribForm(f => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Jeff & Nat" autoFocus />
+              </div>
+
+              {/* Type */}
+              <div>
+                <label className="font-sans-clean" style={{ ...labelSm, marginBottom: '0.5rem' }}>Contribution Type</label>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  {([
+                    { value: 'fixed' as const,     label: '🎯 Fixed Target',       sub: 'Set a specific amount' },
+                    { value: 'remaining' as const,  label: '♾ Receives Remaining', sub: 'Gets whatever is left' },
+                  ]).map(opt => {
+                    const sel = contribForm.type === opt.value;
+                    return (
+                      <button key={opt.value} type="button"
+                        onClick={() => setContribForm(f => ({ ...f, type: opt.value }))}
+                        style={{ flex: 1, padding: '0.65rem 0.75rem', borderRadius: '10px', cursor: 'pointer', border: `2px solid ${sel ? 'var(--charcoal)' : 'var(--light-gray)'}`, background: sel ? 'var(--charcoal)' : 'white', color: sel ? 'white' : 'var(--charcoal)', textAlign: 'center', fontFamily: 'Jost', transition: 'all 0.15s' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{opt.label}</div>
+                        <div style={{ fontSize: '0.65rem', opacity: 0.75, marginTop: '0.1rem' }}>{opt.sub}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Target amount — only for fixed */}
+              {contribForm.type === 'fixed' && (
+                <div>
+                  <label className="font-sans-clean" style={{ ...labelSm, marginBottom: '0.4rem' }}>Target Amount (€)</label>
+                  <input style={inputStyle} type="number" min="0" step="1000"
+                    value={contribForm.target ?? ''}
+                    onChange={e => setContribForm(f => ({ ...f, target: parseFloat(e.target.value) || 0 }))}
+                    placeholder="e.g. 18000" />
+                </div>
+              )}
+
+              {/* Color */}
+              <div>
+                <label className="font-sans-clean" style={{ ...labelSm, marginBottom: '0.5rem' }}>Colour</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {CONTRIB_COLORS.map(col => (
+                    <button key={col} type="button" onClick={() => setContribForm(f => ({ ...f, color: col }))}
+                      style={{ width: 28, height: 28, borderRadius: '50%', background: col, border: contribForm.color === col ? '3px solid var(--charcoal)' : '3px solid transparent', cursor: 'pointer', outline: 'none', padding: 0 }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowContribForm(false); setEditingContrib(null); }}
+                style={{ padding: '0.65rem 1.25rem', background: 'var(--light-gray)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.8rem' }}>Cancel</button>
+              <button onClick={saveContributor}
+                style={{ padding: '0.65rem 1.5rem', background: 'var(--charcoal)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontFamily: 'Jost', fontSize: '0.8rem' }}>
+                {editingContrib ? 'Save Changes' : 'Add Contributor'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Items grouped by day */}
       {activeDays.length === 0 ? (
         <div style={{ ...card, textAlign: 'center', padding: '3rem' }}>
@@ -481,7 +621,6 @@ export default function BudgetTab() {
 
             return (
               <div key={day} style={{ ...card, borderLeft: `4px solid ${accentColor}` }}>
-                {/* Day header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--light-gray)' }}>
                   <h3 className="font-sans-clean" style={{ fontSize: '0.72rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: accentColor, fontWeight: 600 }}>{DAY_LABELS[day]}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -505,8 +644,6 @@ export default function BudgetTab() {
 
                   return (
                     <div key={item.id} style={{ borderBottom: idx < dayItems.length - 1 ? '1px solid var(--light-gray)' : 'none', paddingBottom: idx < dayItems.length - 1 ? '0.85rem' : 0, marginBottom: idx < dayItems.length - 1 ? '0.85rem' : 0 }}>
-
-                      {/* Main row */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
                         <div style={{ flex: 1, minWidth: 200 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.2rem' }}>
@@ -514,20 +651,16 @@ export default function BudgetTab() {
                             <span style={{ ...STATUS_STYLE[item.status], fontSize: '0.6rem', borderRadius: 3, padding: '0.1rem 0.4rem', fontFamily: 'Jost' }}>{item.status}</span>
                             <span style={{ background: '#F5F5F5', color: 'var(--mid-gray)', fontSize: '0.6rem', borderRadius: 3, padding: '0.1rem 0.4rem', fontFamily: 'Jost' }}>{item.category}</span>
                           </div>
-
-                          {/* Variable formula badge */}
                           {item.isVariable && item.perPersonRate && (
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#FFF8E7', color: '#856404', borderRadius: 3, padding: '0.1rem 0.4rem', fontSize: '0.6rem', fontFamily: 'Jost', marginBottom: '0.2rem' }}>
                               €{item.perPersonRate}/pp{item.variableTaxRate ? ` + ${item.variableTaxRate}% tax` : ''} × {item.variableGuestType === 'pool' ? poolGuestCount : mainGuestCount} guests
                             </div>
                           )}
-
                           <div style={{ fontSize: '0.72rem', color: 'var(--mid-gray)', fontFamily: 'Jost', marginBottom: '0.35rem' }}>
-                            <span style={{ color: PAYER_COLORS[item.paidBy], fontWeight: 500 }}>{item.paidBy}</span>
+                            <span style={{ color: colorForPayer(item.paidBy), fontWeight: 500 }}>{item.paidBy}</span>
                             {item.vendor ? ` · ${item.vendor}` : ''}
                             {item.dueDate ? ` · Due ${fmtDate(item.dueDate)}` : ''}
                           </div>
-                          {/* Payment progress */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <div style={{ width: 160, height: 5, background: 'var(--light-gray)', borderRadius: 3, overflow: 'hidden', flexShrink: 0 }}>
                               <div style={{ width: `${pct}%`, height: '100%', background: pct >= 100 ? '#28a745' : 'var(--champagne)', borderRadius: 3, transition: 'width 0.3s' }} />
@@ -558,7 +691,7 @@ export default function BudgetTab() {
                         </div>
                       </div>
 
-                      {/* Tax breakdown (non-variable items only) */}
+                      {/* Tax breakdown */}
                       {isTax && !item.isVariable && (
                         <div style={{ marginTop: '0.5rem', padding: '0.6rem 0.75rem', background: '#FFFBF0', border: '1px solid #F0E6C0', borderRadius: 8, fontSize: '0.78rem', fontFamily: 'Jost' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -594,7 +727,7 @@ export default function BudgetTab() {
                                   {p.isCash && <span title="Cash payment">💵</span>}
                                   <span style={{ fontWeight: 600, color: 'var(--deep-sage)' }}>{fmt(p.amount)}</span>
                                   <span style={{ color: 'var(--mid-gray)' }}>—</span>
-                                  <span>{p.paidBy}</span>
+                                  <span style={{ color: colorForPayer(p.paidBy) }}>{p.paidBy}</span>
                                   {p.date && <span style={{ color: 'var(--mid-gray)', fontSize: '0.7rem' }}>{fmtDate(p.date)}</span>}
                                   {p.note && <span style={{ color: 'var(--mid-gray)', fontStyle: 'italic', fontSize: '0.72rem' }}>{p.note}</span>}
                                   <button onClick={() => removePayment(item.id, p.id)}
@@ -628,7 +761,7 @@ export default function BudgetTab() {
                             <div>
                               <label style={labelSm}>Paid By</label>
                               <select value={payForm.paidBy} onChange={e => setPayForm(f => ({ ...f, paidBy: e.target.value }))} style={miniInput}>
-                                {PAYMENT_PAYERS.map(p => <option key={p} value={p}>{p}</option>)}
+                                {paymentPayers.map(p => <option key={p} value={p}>{p}</option>)}
                               </select>
                             </div>
                             <div>
@@ -653,7 +786,6 @@ export default function BudgetTab() {
                   );
                 })}
 
-                {/* Day totals bar */}
                 <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--light-gray)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ flex: 1, height: 4, background: 'var(--light-gray)', borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{ width: `${dayPct}%`, height: '100%', background: accentColor, borderRadius: 2, transition: 'width 0.5s' }} />

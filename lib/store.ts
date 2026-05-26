@@ -1,7 +1,7 @@
 'use client';
 import { BudgetItem, Guest, ChecklistItem, TorontoBudgetItem, TorontoChecklistItem, VillaRoom, TorontoGuest, BudgetSettings } from './types';
 
-const DEFAULT_BUDGET_SETTINGS: BudgetSettings = { mainGuestCount: 106, poolGuestCount: 60, jeffNatTarget: 18000, mikeTarget: 10000 };
+const DEFAULT_BUDGET_SETTINGS: BudgetSettings = { mainGuestCount: 100, poolGuestCount: 50, contributors: [] };
 import { GUEST_SEED, BUDGET_SEED, VILLA_SEED, CHECKLIST_SEED } from './seedData';
 import { supabase } from './supabase';
 

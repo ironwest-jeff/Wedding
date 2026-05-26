@@ -1,5 +1,14 @@
 export type WeddingDay = 'Aug 31 — Welcome Dinner' | 'Sep 1 — Wedding Day' | 'Sep 2 — Pool Party' | 'Sep 3 — Checkout' | 'All Days' | 'N/A';
-export type Payer = 'Nat/Jeff' | 'Mike' | 'Tony' | 'Shared' | 'Vendor';
+export type Payer = string; // dynamic — driven by Contributor names
+
+export interface Contributor {
+  id: string;
+  name: string;
+  type: 'fixed' | 'remaining';  // fixed target or gets all remaining
+  target?: number;               // only for 'fixed' type
+  color: string;
+  payerNames: string[];          // payment.paidBy values that count toward this contributor
+}
 export type PayStatus = 'Paid' | 'Pending' | 'Deposit Paid';
 
 export interface Payment {
@@ -31,10 +40,9 @@ export interface BudgetItem {
 }
 
 export interface BudgetSettings {
-  mainGuestCount: number;   // default 106
-  poolGuestCount: number;   // default 60
-  jeffNatTarget: number;    // default 18000
-  mikeTarget: number;       // default 10000
+  mainGuestCount: number;
+  poolGuestCount: number;
+  contributors: Contributor[];
 }
 
 export type DietaryRestriction = 'None' | 'Vegetarian' | 'Vegan' | 'Gluten-Free' | 'Kosher' | 'Halal' | 'Nut Allergy' | 'Dairy-Free' | 'Other';
