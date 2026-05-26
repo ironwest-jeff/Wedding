@@ -7,13 +7,14 @@ import ChecklistTab from '@/components/ChecklistTab';
 import TorontoTab from '@/components/TorontoTab';
 import VillaTab from '@/components/VillaTab';
 import SeatingTab from '@/components/SeatingTab';
+import GuestSiteTab from '@/components/GuestSiteTab';
 import Countdown from '@/components/Countdown';
 import { supabase } from '@/lib/supabase';
 import { setWeddingId, migrateLegacyLocalStorage } from '@/lib/store';
 import { Wedding } from '@/lib/types';
 import MusicPlayer from '@/components/MusicPlayer';
 
-type Tab = 'budget' | 'guests' | 'checklist' | 'toronto' | 'villa' | 'seating';
+type Tab = 'budget' | 'guests' | 'checklist' | 'toronto' | 'villa' | 'seating' | 'guestsite';
 
 /** Format an ISO date string as "AUG 31" */
 function fmtDate(d: string | null | undefined): string {
@@ -286,6 +287,7 @@ export default function Home() {
     { id: 'villa',     label: 'Villa Rooms',       icon: '🏡' },
     { id: 'seating',   label: 'Seating',           icon: '🪑' },
     { id: 'toronto',   label: 'Toronto Wedding',   icon: '⛪' },
+    { id: 'guestsite', label: 'Guest Site',        icon: '🌐' },
   ];
 
   if (checking) return (
@@ -463,6 +465,7 @@ export default function Home() {
         {activeTab === 'villa'     && <VillaTab />}
         {activeTab === 'seating'   && <SeatingTab />}
         {activeTab === 'toronto'   && <TorontoTab />}
+        {activeTab === 'guestsite' && <GuestSiteTab />}
       </main>
     </div>
   );

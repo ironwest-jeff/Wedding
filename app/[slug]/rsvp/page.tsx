@@ -44,6 +44,7 @@ export default function RsvpPage() {
     lastName: '',
     email: '',
     attending: '' as 'yes' | 'no' | '',
+    mealChoice: '',
     dietary: 'None',
     dietaryNotes: '',
     notes: '',
@@ -82,6 +83,7 @@ export default function RsvpPage() {
       last_name:     form.lastName.trim(),
       email:         form.email.trim().toLowerCase(),
       rsvp:          form.attending === 'yes' ? 'Confirmed' : 'Declined',
+      meal_choice:   form.attending === 'yes' ? form.mealChoice : '',
       dietary:       form.attending === 'yes' ? form.dietary : 'None',
       dietary_notes: form.attending === 'yes' ? form.dietaryNotes.trim() : '',
       notes:         form.notes.trim(),
@@ -338,6 +340,35 @@ export default function RsvpPage() {
               ))}
             </div>
           </div>
+
+          {/* Meal choice — only if attending and couple set options */}
+          {form.attending === 'yes' && (wedding.meal_choices ?? []).length > 0 && (
+            <div>
+              <label style={labelStyle}>Meal Selection *</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {(wedding.meal_choices ?? []).map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => set('mealChoice', m)}
+                    style={{
+                      padding: '0.85rem 1rem',
+                      border: `2px solid ${form.mealChoice === m ? 'var(--charcoal)' : 'var(--light-gray)'}`,
+                      borderRadius: 10,
+                      background: form.mealChoice === m ? 'var(--charcoal)' : 'white',
+                      color: form.mealChoice === m ? 'white' : 'var(--charcoal)',
+                      cursor: 'pointer', textAlign: 'left',
+                      fontFamily: 'Cormorant Garamond, Georgia, serif',
+                      fontSize: '1rem', fontWeight: 300,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Dietary — only if attending */}
           {form.attending === 'yes' && (

@@ -204,6 +204,11 @@ export default function GuestListTab() {
                       }}>
                         {sub.rsvp === 'Confirmed' ? '✓ Attending' : '✕ Declining'}
                       </span>
+                      {sub.meal_choice && (
+                        <span style={{ padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', fontFamily: 'Jost', background: '#FFF3CD', color: '#856404' }}>
+                          🍽 {sub.meal_choice}
+                        </span>
+                      )}
                       {sub.dietary && sub.dietary !== 'None' && (
                         <span style={{ padding: '0.15rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', fontFamily: 'Jost', background: '#E8F4F8', color: '#0C5460' }}>
                           {sub.dietary}

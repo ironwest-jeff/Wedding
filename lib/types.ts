@@ -133,6 +133,16 @@ export interface TorontoChecklistItem {
   notes?: string;
 }
 
+// ── Wedding Events (set by couple, shown on public page + RSVP form) ─
+export interface WeddingEvent {
+  id: string;
+  name: string;         // "Welcome Dinner", "Wedding Ceremony", etc.
+  date: string;         // ISO date "2026-08-31"
+  time?: string;        // "7:00 PM"
+  description?: string; // Short note for guests
+  dresscode?: string;   // "Black Tie", "Cocktail Attire", etc.
+}
+
 // ── RSVP Submissions (from public guest portal) ─────────────────────
 export interface RsvpSubmission {
   id: string;
@@ -143,6 +153,7 @@ export interface RsvpSubmission {
   rsvp: 'Confirmed' | 'Declined';
   dietary: string;
   dietary_notes: string;
+  meal_choice: string;
   notes: string;
   submitted_at: string;
   imported: boolean;
@@ -162,6 +173,8 @@ export interface Wedding {
   welcome_message: string;
   is_public: boolean;
   member_emails: string[];          // other users who can access this wedding
+  events: WeddingEvent[];           // schedule shown on public page
+  meal_choices: string[];           // meal options shown on RSVP form
   created_at: string;
   updated_at: string;
 }
